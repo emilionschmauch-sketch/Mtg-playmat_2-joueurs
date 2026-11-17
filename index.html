@@ -454,7 +454,7 @@ body.game-over{
       <button id="connectRemoteBtn" class="btn small" type="button">Rejoindre la salle</button>
       <button id="disconnectRemoteBtn" class="ghost small" type="button" style="display:none">Se déconnecter</button>
       <div id="remoteStatus" class="remote-status muted" role="status" aria-live="polite"></div>
-      <div class="remote-status muted">Les deux joueurs utilisent cette adresse et le même code de salle à 4 chiffres. Seules les zones publiques sont partagées ; main, bibliothèque et deck restent privés.</div>
+      <div class="remote-status muted">Les deux joueurs utilisent cette adresse et le même code de salle à 4 chiffres.</div>
     </div>
 
     <div style="padding-top:12px;display:none" id="funcarteSection">
@@ -1277,7 +1277,9 @@ body.game-over{
      renderRemotePlayer();
    });
  }
+ 
  $('addRemotePlayerBtn').addEventListener('click', () => {
+  document.getElementById('addRemotePlayerBtn').classList.toggle('btn_utilise');
    const panel = $('remoteConnectionPanel');
    panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
    if(!$('remoteServerUrl').value) $('remoteServerUrl').value = 'wss://mtg-playmat2-joueurs-production.up.railway.app/ws';
