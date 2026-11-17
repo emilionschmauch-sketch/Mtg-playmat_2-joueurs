@@ -324,6 +324,73 @@ textarea#deckText{width:100%;min-height:90px;padding:8px;border-radius:8px;borde
   height:var(--small-h);
 }
 
+.remote-connection-panel{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:end;
+  gap:8px;
+  margin-top:10px;
+  padding:12px;
+  background:rgba(255,255,255,0.04);
+  border:1px solid rgba(255,255,255,0.08);
+  border-radius:10px;
+}
+
+.remote-connection-panel label{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  color:var(--muted);
+  font-size:13px;
+}
+
+.remote-connection-panel input{
+  min-width:180px;
+  max-width:100%;
+  padding:8px;
+  border:1px solid rgba(255,255,255,0.16);
+  border-radius:6px;
+}
+
+.remote-status{
+  flex-basis:100%;
+  min-height:1em;
+}
+
+.remote-player-zone-title{
+  margin:12px 0 6px;
+  color:var(--muted);
+  font-weight:600;
+}
+
+.remote-battlefield{
+  position:relative;
+  min-height:180px;
+  overflow:auto;
+  background:rgba(0,0,0,0.12);
+  border-radius:8px;
+}
+
+.remote-battlefield .card{
+  position:absolute;
+  width:var(--small-w);
+  height:var(--small-h);
+}
+
+.remote-card-image{
+  display:block;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  border-radius:8px;
+}
+
+.remote-hand-count{
+  padding:10px;
+  background:rgba(0,0,0,0.12);
+  border-radius:8px;
+}
+
 /* Défaite */
 body.game-over{
     background:#7a0000 !important;
@@ -368,9 +435,26 @@ body.game-over{
       <button id="loadDeck" class="btn">Charger Deck</button>
       <span id="loadStatus" class="muted" style="display:none">Chargement…</span>
 
-      <button id="addRemotePlayerBtn" class="btn" onclick="alert('Patience ! Fonctionnalité bientôt disponible')">Ajouter joueur distant</button>
+      <button id="addRemotePlayerBtn" class="btn" type="button">Ajouter joueur distant</button>
       <button id="funcartes" class="btn" onclick="afficherFuncartesSection()">Funcartes</button>
       <button id="newGame" class="btn">Nouvelle partie</button>
+    </div>
+
+    <div id="remoteConnectionPanel" class="remote-connection-panel" style="display:none">
+      <label>Adresse du serveur WebSocket
+        <input id="remoteServerUrl" type="url" autocomplete="url" placeholder="ws://adresse-du-serveur:8080/ws">
+      </label>
+      <label>Code de salle
+        <input id="remoteRoomCode" type="text" maxlength="32" autocomplete="off" placeholder="Ex. ABC123">
+      </label>
+      <label>Votre nom
+        <input id="remotePlayerName" type="text" maxlength="32" autocomplete="nickname" placeholder="Joueur">
+      </label>
+      <button id="generateRoomBtn" class="btn small" type="button">Créer une salle</button>
+      <button id="connectRemoteBtn" class="btn small" type="button">Rejoindre la salle</button>
+      <button id="disconnectRemoteBtn" class="ghost small" type="button" style="display:none">Se déconnecter</button>
+      <div id="remoteStatus" class="remote-status muted" role="status" aria-live="polite"></div>
+      <div class="remote-status muted">Sur un ordinateur, lancez <code>npm install</code> puis <code>npm start</code>. Sur les deux postes, entrez <code>ws://ADRESSE_IP_DU_SERVEUR:8080/ws</code> et le même code. Pour jouer hors réseau local, hébergez le relais avec une adresse sécurisée <code>wss://</code>. Seules les zones publiques sont partagées ; main, bibliothèque et deck restent privés.</div>
     </div>
 
     <div style="padding-top:12px;display:none" id="funcarteSection">
@@ -458,7 +542,7 @@ body.game-over{
 
     </div>
   </div>
-<div id="remotePlayersWrap" class="remote-players-wrap"></div>
+<div id="remotePlayersWrap" class="remote-players-wrap" aria-live="polite"></div>
   <div id="errors" style="margin-top:8px"></div>
 </div>
  <script>
@@ -482,6 +566,8 @@ body.game-over{
  let undoStack = [];
  const UNDO_LIMIT = 200;
  let handHidden = false;
+ let remoteSocket = null;
+ let remotePlayer = null;
  /* ===========================
     DOM shortcuts
     =========================== */
@@ -976,13 +1062,229 @@ body.game-over{
          document.body.classList.add("game-over");
          $("poisonStat").classList.add("lose");
      }
+     publishRemoteState();
  }
  function renderAll(){
    renderHand();
    renderBattlefield();
    renderZonesSmall();
    updateCounts();
+   publishRemoteState();
  }
+
+ function publicCard(card){
+   const image = String(card.image || '');
+   const safeImage = card.isFaceDown ? 'https://cards.scryfall.io/back.png' : (/^(https?:\/\/|data:image\/(?:png|jpeg|gif|webp);base64,)/i.test(image) ? image : 'https://cards.scryfall.io/back.png');
+   const safeCard = {
+     id: String(card.id || uid('remote')),
+     image: safeImage,
+     counters: card.counters && typeof card.counters === 'object' ? cloneSerializable(card.counters) : {},
+     tapped: !!card.tapped,
+     isToken: !!card.isToken,
+     isFaceDown: !!card.isFaceDown,
+     x: Number.isFinite(Number(card.x)) ? Number(card.x) : 20,
+     y: Number.isFinite(Number(card.y)) ? Number(card.y) : 20
+   };
+   safeCard.name = safeCard.isFaceDown ? 'Carte face cachée' : String(card.name || 'Carte');
+   return safeCard;
+ }
+ function getPublicState(){
+   return {
+     handCount: state.hand.length,
+     libraryCount: state.library.length,
+     life: parseInt(lifeNode.textContent, 10) || 0,
+     commanderDamage: parseInt($('degat_du_co').textContent, 10) || 0,
+     poison: parseInt(poisonNode.textContent, 10) || 0,
+     battlefield: state.battlefield.concat(state.tokens).map(publicCard),
+     graveyard: state.graveyard.map(publicCard),
+     exile: state.exile.map(publicCard),
+     commandZone: state.commandZone.map(publicCard)
+   };
+ }
+ function publishRemoteState(){
+   if(!remoteSocket || remoteSocket.readyState !== WebSocket.OPEN || !remotePlayer || !remotePlayer.joined) return;
+   remoteSocket.send(JSON.stringify({type:'state', state:getPublicState()}));
+ }
+ function renderRemotePlayer(){
+   const wrap = $('remotePlayersWrap');
+   wrap.innerHTML = '';
+   if(!remotePlayer || !remotePlayer.state) return;
+   const data = remotePlayer.state;
+   const player = document.createElement('section');
+   player.className = 'remote-player';
+   const header = document.createElement('div');
+   header.className = 'remote-player-header';
+   const title = document.createElement('div');
+   title.className = 'remote-player-name';
+   title.textContent = `${remotePlayer.name || 'Adversaire'} — zones publiques`;
+   header.appendChild(title);
+   player.appendChild(header);
+   const stats = document.createElement('div');
+   stats.className = 'remote-player-stats';
+   [
+     ['Vie', data.life],
+     ['Dégâts du commandant', data.commanderDamage],
+     ['Poison', data.poison],
+     ['Bibliothèque', `${Number(data.libraryCount) || 0} carte(s)`]
+   ].forEach(([label, value]) => {
+     const stat = document.createElement('div');
+     stat.className = 'remote-stat';
+     stat.textContent = `${label} : ${typeof value === 'number' ? (Number(value) || 0) : value}`;
+     stats.appendChild(stat);
+   });
+   player.appendChild(stats);
+   const hand = document.createElement('div');
+   hand.className = 'remote-hand-count';
+   hand.textContent = `Main : ${Number(data.handCount) || 0} carte(s)`;
+   player.appendChild(hand);
+   const appendZone = (label, cards, battlefield) => {
+     const heading = document.createElement('div');
+     heading.className = 'remote-player-zone-title';
+     heading.textContent = `${label} (${cards.length})`;
+     player.appendChild(heading);
+     const zone = document.createElement('div');
+     zone.className = battlefield ? 'remote-battlefield' : 'remote-player-zone';
+     cards.forEach(card => {
+       const el = document.createElement('div');
+       el.className = 'card' + (card.tapped ? ' tapped' : '');
+       el.title = card.name || 'Carte';
+       el.setAttribute('aria-label', card.name || 'Carte');
+       const image = document.createElement('img');
+       const imageUrl = String(card.image || '');
+       image.src = /^(https?:\/\/|data:image\/(?:png|jpeg|gif|webp);base64,)/i.test(imageUrl) ? imageUrl : 'https://cards.scryfall.io/back.png';
+       image.alt = '';
+       image.draggable = false;
+       image.className = 'remote-card-image';
+       el.appendChild(image);
+       if(battlefield){
+         el.style.left = `${Math.max(0, Math.min(10000, Number(card.x) || 0))}px`;
+         el.style.top = `${Math.max(0, Math.min(10000, Number(card.y) || 0))}px`;
+       }
+       for(const [key, value] of Object.entries(card.counters || {})){
+         const counter = document.createElement('div');
+         counter.className = 'counters';
+         counter.textContent = `${key}: ${value}`;
+         el.appendChild(counter);
+       }
+       zone.appendChild(el);
+     });
+     player.appendChild(zone);
+   };
+   appendZone('Champ de bataille', Array.isArray(data.battlefield) ? data.battlefield : [], true);
+   appendZone('Cimetière', Array.isArray(data.graveyard) ? data.graveyard : [], false);
+   appendZone('Exil', Array.isArray(data.exile) ? data.exile : [], false);
+   if(Array.isArray(data.commandZone) && data.commandZone.length) appendZone('Zone de commandement', data.commandZone, false);
+   wrap.appendChild(player);
+ }
+ function disconnectRemote(message){
+   if(remoteSocket){
+     const socket = remoteSocket;
+     remoteSocket = null;
+     socket.close();
+   }
+   remotePlayer = null;
+   $('disconnectRemoteBtn').style.display = 'none';
+   $('connectRemoteBtn').disabled = false;
+   $('generateRoomBtn').disabled = false;
+   if(message) $('remoteStatus').textContent = message;
+   renderRemotePlayer();
+ }
+ function connectRemote(){
+   if(remoteSocket && remoteSocket.readyState < WebSocket.CLOSING) remoteSocket.close();
+   const serverUrl = $('remoteServerUrl').value.trim();
+   const room = $('remoteRoomCode').value.trim();
+   const name = $('remotePlayerName').value.trim() || 'Joueur';
+   if(!serverUrl || !room){
+     $('remoteStatus').textContent = 'Saisissez l’adresse du serveur et le code de salle.';
+     return;
+   }
+   if(!/^wss?:\/\//i.test(serverUrl)){
+     $('remoteStatus').textContent = 'L’adresse doit commencer par ws:// ou wss://.';
+     return;
+   }
+   if(!/^[a-zA-Z0-9_-]{1,32}$/.test(room)){
+     $('remoteStatus').textContent = 'Le code doit contenir 1 à 32 lettres, chiffres, tirets ou underscores.';
+     return;
+   }
+   $('remoteStatus').textContent = 'Connexion au serveur…';
+   $('connectRemoteBtn').disabled = true;
+   $('generateRoomBtn').disabled = true;
+   let socket;
+   try {
+     const parsedUrl = new URL(serverUrl);
+     if((parsedUrl.protocol !== 'ws:' && parsedUrl.protocol !== 'wss:') || !parsedUrl.hostname) throw new Error('URL invalide');
+     if(location.protocol === 'https:' && parsedUrl.protocol !== 'wss:') throw new Error('Une page HTTPS nécessite une connexion WSS.');
+     socket = new WebSocket(parsedUrl.href);
+   } catch(error) {
+     $('remoteStatus').textContent = error.message || 'Adresse WebSocket invalide.';
+     $('connectRemoteBtn').disabled = false;
+     $('generateRoomBtn').disabled = false;
+     return;
+   }
+   remoteSocket = socket;
+   remotePlayer = {name, room, joined:false, state:null};
+   socket.addEventListener('open', () => {
+     if(remoteSocket !== socket) return;
+     socket.send(JSON.stringify({type:'join', room, name}));
+   });
+   socket.addEventListener('message', event => {
+     if(remoteSocket !== socket) return;
+     let message;
+     try { message = JSON.parse(event.data); }
+     catch(error){ $('remoteStatus').textContent = 'Réponse invalide du serveur.'; return; }
+     if(message.type === 'error'){
+       disconnectRemote(message.message || 'Connexion refusée.');
+     } else if(message.type === 'joined'){
+       remotePlayer.joined = true;
+       $('remoteStatus').textContent = message.playerCount === 2 ? 'Connecté à la salle.' : 'Salle créée. En attente de l’autre joueur…';
+       $('disconnectRemoteBtn').style.display = '';
+       publishRemoteState();
+     } else if(message.type === 'peer-joined'){
+       $('remoteStatus').textContent = 'Votre adversaire a rejoint la salle.';
+       publishRemoteState();
+     } else if(message.type === 'peer-left'){
+       remotePlayer.state = null;
+       $('remoteStatus').textContent = 'Votre adversaire s’est déconnecté.';
+       renderRemotePlayer();
+     } else if(message.type === 'state' && message.state && remotePlayer){
+       remotePlayer.name = String(message.name || 'Adversaire').slice(0, 32);
+       remotePlayer.state = message.state;
+       renderRemotePlayer();
+     }
+   });
+   socket.addEventListener('error', () => {
+     if(remoteSocket === socket) $('remoteStatus').textContent = 'Connexion impossible. Vérifiez l’adresse et que le serveur fonctionne.';
+   });
+   socket.addEventListener('close', () => {
+     if(remoteSocket !== socket) return;
+     remoteSocket = null;
+     remotePlayer = null;
+     $('disconnectRemoteBtn').style.display = 'none';
+     $('connectRemoteBtn').disabled = false;
+     $('generateRoomBtn').disabled = false;
+     if(!$('remoteStatus').textContent.startsWith('Connexion impossible')) $('remoteStatus').textContent = 'Connexion fermée.';
+     renderRemotePlayer();
+   });
+ }
+ $('addRemotePlayerBtn').addEventListener('click', () => {
+   const panel = $('remoteConnectionPanel');
+   panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
+   if(!$('remoteServerUrl').value){
+     const host = location.hostname || 'localhost';
+     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+     const port = location.protocol === 'https:' ? '' : ':8080';
+     $('remoteServerUrl').value = `${protocol}//${host}${port}/ws`;
+   }
+   if(!$('remotePlayerName').value) $('remotePlayerName').value = `Joueur ${Math.floor(Math.random() * 90) + 10}`;
+ });
+ $('generateRoomBtn').addEventListener('click', () => {
+    const bytes = new Uint8Array(12);
+   crypto.getRandomValues(bytes);
+   $('remoteRoomCode').value = Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('').toUpperCase();
+   connectRemote();
+ });
+ $('connectRemoteBtn').addEventListener('click', connectRemote);
+ $('disconnectRemoteBtn').addEventListener('click', () => disconnectRemote('Vous avez quitté la salle.'));
  /* ===========================
     DRAG (pointer) with clamp to battlefield bounds
     =========================== */
@@ -1021,6 +1323,7 @@ body.game-over{
      try{ el.releasePointerCapture(dragging.pointerId); }catch(_){}
      dragging = null;
      // push move undo? we could store last move action but skip for simplicity
+     publishRemoteState();
    });
  }
  /* ===========================
