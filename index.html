@@ -1,0 +1,2023 @@
+ <!doctype html>
+ <html lang="fr">
+ <head>
+ <meta charset="utf-8"/>
+ <meta name="viewport" content="width=device-width,initial-scale=1"/>
+ <title>MAGIC Playmat</title>
+<style>
+:root{
+  --bg:#081018;
+  --panel:#0f2b25;
+  --muted:#91a3ac;
+  --white:#e6eef2;
+  --accent:#0ea5a4;
+  --danger:#ef4444;
+  --card-w:88px;
+  --card-h:122px;
+  --small-w:60px;
+  --small-h:82px;
+  --zone-min-h:140px;
+}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;}
+.app{max-width:1300px;margin:0 auto;padding:12px;box-sizing:border-box;}
+.header{display:flex; flex-direction:row;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.header .title{font-size:38px;font-weight:600;}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+textarea,input,button,select{font-family:inherit}
+textarea#deckText{width:100%;min-height:90px;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:#f8fafb;color:#012}
+.btn{background:#e6f6f5;color:#013;padding:8px 10px;border-radius:8px;border:none;cursor:pointer;}
+.btn_utilise{background:#ffe600;color:#013;padding:8px 10px;border-radius:8px;border:none;cursor:pointer;}
+.btn:hover,.btn_utilise:hover{transform : scale(1.05);transition:transform 0.2s ease}
+.ghost{background:transparent;border:1px solid rgb(255, 255, 255);padding:6px 10px;border-radius:8px;color:var(--white); width:auto; height:auto; font-size:25px;}
+.small{padding:6px 8px;font-size:13px}
+.row-stats{display:flex;gap:12px;align-items:center;margin-top:8px}
+.stat{background:rgba(88, 82, 82);padding:8px;border:1px solid white;border-radius:10px ; text-align:center;min-width:90px;}
+.stat .value{font-size:20px;margin:4px 0}
+.layout{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap}
+/* a column that expands downward; each column contains stacked zones */
+.col{flex:1;min-width:240px;display:flex;flex-direction:column;gap:12px}
+
+#zoomOverlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+#zoomOverlay img {
+  max-width: 90%;
+  max-height: 90%;
+  border: 4px solid white;
+  border-radius: 8px;
+}
+#zoomOverlay.hidden { display: none; }
+
+.reveal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 8, 12, 0.86);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 2100;
+}
+.reveal-panel {
+  width: min(92vw, 380px);
+  background: #071419;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.35);
+}
+.reveal-image {
+  width: min(82vw, 280px);
+  aspect-ratio: 2.5 / 3.5;
+  object-fit: cover;
+  border-radius: 10px;
+  background: #0e1a22;
+}
+.reveal-name {
+  text-align: center;
+  font-weight: 600;
+  line-height: 1.25;
+}
+.reveal-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bouton_plus {
+  background: #081018;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+}
+
+.funcarte-view {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 8, 12, 0.86);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 3000;
+}
+.funcarte-panel {
+  width: min(1100px, 100%);
+  max-height: 92vh;
+  background: #071419;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 14px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.funcarte-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.funcarte-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+  overflow: auto;
+  padding-right: 4px;
+}
+.funcarte-item {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.funcarte-item img {
+  width: 100%;
+  aspect-ratio: 2.5 / 3.5;
+  object-fit: cover;
+  border-radius: 8px;
+  background: #0e1a22;
+}
+.funcarte-name {
+  font-size: 13px;
+  line-height: 1.25;
+  color: var(--white);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* zones */
+.zone{background:linear-gradient(180deg,var(--panel),#062e28);padding:10px;border-radius:10px;min-height:var(--zone-min-h);box-sizing:border-box;overflow:auto}
+.zone-title{font-weight:600;margin-bottom:8px;color:var(--muted)}
+.hand{display:flex;gap:8px;overflow:auto;padding:6px;min-height:110px}
+.zone-list{display:flex;gap:6px;flex-wrap:wrap;align-items:flex-start}
+.card{width:var(--card-w);height:var(--card-h);background-size:cover;background-position:center;border-radius:8px;box-shadow:0 8px 20px rgba(0,0,0,0.6);position:relative;touch-action:none;transform-origin:center center;transition:transform 180ms ease}
+.card.small{width:var(--small-w);height:var(--small-h)}
+.card.tapped{transform:rotate(90deg)}
+.counters{position:absolute;left:6px;bottom:6px;background:rgba(0,0,0,0.45);padding:3px 6px;border-radius:6px;font-size:12px}
+.selected{outline:3px solid rgba(255,255,255,0.06)}
+/* battlefield bigger and scrollable internal, clamp drag inside it */
+.battle-wrap{min-height:520px;height:calc(60vh);background:linear-gradient(180deg,#073b34,#052b24);border-radius:8px;overflow:hidden;position:relative}
+.battle-area{position:relative;width:100%;height:100%;overflow:hidden}
+/* context menu */
+.context-menu{position:fixed;background:#062b29;border:1px solid rgba(255,255,255,0.06);padding:10px;border-radius:10px;z-index:9999;min-width:240px;box-shadow:0 10px 30px rgba(0,0,0,0.6)}
+.context-menu .menu-header{cursor:grab;padding:6px;border-bottom:1px solid rgba(255,255,255,0.03);display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.context-menu .menu-items{display:flex;flex-direction:column;gap:6px;max-height:60vh;overflow:auto}
+.context-menu button, .context-menu input{background:transparent;border:1px solid rgba(255,255,255,0.04);padding:6px;border-radius:6px;color:var(--white)}
+.context-menu .row{display:flex;gap:6px;align-items:center}
+.context-menu hr{border:none;border-top:1px solid rgba(255,255,255,0.04);margin:6px 0}
+
+/* responsive */
+@media (max-width:900px){
+  .header{flex-direction:column;align-items:flex-start;}
+  .controls{width:100%;justify-content:flex-start;}
+  .controls > *{flex:1 1 auto;min-width:0;}
+  .layout{flex-direction:column;}
+  .col{min-width:100%;}
+  .battle-wrap{height:50vh;}
+  .row-stats{flex-wrap:wrap;justify-content:flex-start;}
+  .stat{flex:1 1 140px;min-width:120px;}
+  .zone{min-height:120px;}
+  .hand{min-height:90px;}
+}
+
+@media (max-width:640px){
+  .header{gap:6px;}
+  .controls{flex-direction:column;align-items:stretch;}
+  .controls > *{width:100%;}
+  .row-stats{flex-direction:column;align-items:stretch;}
+  .stat{width:100%;min-width:0;}
+  .zone{min-height:110px;}
+  .hand{min-height:80px;}
+  .card{width:70px;height:98px;}
+  .card.small{width:48px;height:64px;}
+  .battle-wrap{height:55vh;}
+  .layout{gap:10px;}
+  .zone-title{font-size:14px;}
+}
+
+/* small helper */
+.muted{color:white;font-size:13px}
+.err{color:var(--danger);font-weight:600}
+
+.remote-players-wrap{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  margin-top:12px;
+}
+
+.remote-player{
+  background:linear-gradient(180deg, rgba(15,43,37,0.96), rgba(6,46,40,0.96));
+  border:1px solid rgba(255,255,255,0.08);
+  border-radius:10px;
+  padding:10px;
+  box-sizing:border-box;
+}
+
+.remote-player-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:8px;
+}
+
+.remote-player-name{
+  font-weight:700;
+}
+
+.remote-player-stats{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  margin-bottom:10px;
+}
+
+.remote-stat{
+  background:rgba(255,255,255,0.03);
+  border:1px solid rgba(255,255,255,0.08);
+  border-radius:8px;
+  padding:8px 10px;
+  min-width:110px;
+  text-align:center;
+}
+
+.remote-player-zone{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+  min-height:80px;
+  padding-top:4px;
+}
+
+.remote-layout{
+  display:grid;
+  grid-template-columns: minmax(180px, 1.1fr) minmax(320px, 3fr) minmax(180px, 1.15fr);
+  gap:12px;
+  align-items:start;
+  margin-top:8px;
+  width:100%;
+}
+
+.remote-col{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.remote-left-split{
+  display:grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap:12px;
+}
+
+.remote-col-center{
+  min-width:320px;
+}
+
+.remote-zone{
+  background:linear-gradient(180deg,var(--panel),#062e28);
+  padding:10px;
+  border-radius:10px;
+  min-height:120px;
+  box-sizing:border-box;
+}
+
+.remote-battle-area{
+  position:relative;
+  min-height:460px;
+  width:100%;
+  overflow:visible;
+}
+
+.remote-hidden-card{
+  width:var(--small-w);
+  height:var(--small-h);
+  border-radius:8px;
+  background-size:cover;
+  background-position:center;
+  box-shadow:0 8px 20px rgba(0,0,0,0.6);
+  background-image:url('https://cards.scryfall.io/back.png');
+}
+
+.remote-player .card{
+  width:var(--small-w);
+  height:var(--small-h);
+}
+
+/* Défaite */
+body.game-over{
+    background:#7a0000 !important;
+    transition:background 0.3s;
+}
+
+.stat.lose{
+    background:#c62828;
+    transition:background 0.3s;
+}
+
+.stat.lose .value{
+    color:white;
+    font-weight:bold;
+}
+
+</style>
+ </head>
+ <body>
+ <div class="app" id="app">
+  <div class="header">
+    <div>
+    <div class="title">Simulateur MTG</div>
+    <h3>Réalisé par Emilion Schmauch</h3>
+    <p>Si le site vous plait ou pour toute question ou suggestion, 
+      vous pouvez me contacter par mail à emilion.schmauch@gmail.com</p>
+    </div>
+    <div class="controls">
+      <button id="exportBtn" class="ghost">Exporter état</button>
+      <input id="importStateFile" type="file" accept=".json" style="display:none" />
+      <button id="importStateBtn" class="ghost">Importer état</button>
+    </div>
+  </div>
+
+  <div>
+    <label class="muted">Collez votre decklist ou importez un fichier (.txt) puis clickez sur "Charger Deck". 
+      Privilégez l'anglais pour une meilleure qualité d'images. 
+      Si toutes les cartes ne se chargent pas, vérifiez votre connexion.</label>
+    <textarea id="deckText" placeholder="Ex : 4 Lightning Bolt"></textarea>
+    <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
+      <input id="deckFile" type="file" accept=".txt" />
+      <button id="loadDeck" class="btn">Charger Deck</button>
+      <span id="loadStatus" class="muted" style="display:none">Chargement…</span>
+
+      <button id="addRemotePlayerBtn" class="btn" onclick="alert('Patience ! Fonctionnalité bientôt disponible')">Ajouter joueur distant</button>
+      <button id="funcartes" class="btn" onclick="afficherFuncartesSection()">Funcartes</button>
+      <button id="newGame" class="btn">Nouvelle partie</button>
+    </div>
+
+    <div style="padding-top:12px;display:none" id="funcarteSection">
+      <label class="muted">Base de données Funcartes (importer plusieurs fichiers PNG/JPG dont le nom du fichier est le nom de la carte)</label>
+      <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+        <input id="funcarteFile" type="file" accept="image/png,image/jpeg" multiple />
+        <button id="importFuncartes" class="btn small">Importer Funcartes</button>
+        <button id="viewFuncartes" class="ghost small">Voir BD</button>
+        <button id="clearFuncartes" class="ghost small">Effacer BD</button>
+        <span id="funcarteStatus" class="muted" style="display:none"></span>
+      </div>
+    </div>
+
+    <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <button id="newTurn" class="btn small">Nouveau tour</button>
+      <button id="drawX" class="ghost small">Piocher X</button>
+      <button id="millX" class="ghost small">Meuler X</button>
+      <button id="tutorBtn" class="ghost small">Tutor (nom)</button>
+      <button id="addToBoardBtn" class="ghost small">Ajouter au board</button>
+      <button id="undoBtn" class="ghost small">Annuler</button>
+      <button id="revealTop" class="ghost small">Révéler dessus</button>
+      <button id="shuffleLib" class="ghost small">Mélanger</button>
+      <button id="toggleHand" class="ghost small">Cacher main</button>
+    </div>
+
+    
+  </div>
+
+  <div class="row-stats">
+    <div class="stat" id="lifeStat"><div class="muted">Vie</div><div id="life" class="value">40</div><div style="display:flex;gap:6px;justify-content:center"><button id="lifePlus" class="bouton_plus">+1</button><button id="lifeMinus" class="bouton_plus">-1</button></div></div>
+    <div class="stat" id="coStat"><div class="muted">Dégâts du commandant</div><div id="degat_du_co" class="value">0</div><div style="display:flex;gap:6px;justify-content:center"><button id="degat_du_coPlus" class="bouton_plus">+1</button><button id="degat_du_coMinus" class="bouton_plus">-1</button></div></div>
+    <div class="stat" id="poisonStat"><div class="muted">Poison</div><div id="poison" class="value">0</div><div style="display:flex;gap:6px;justify-content:center"><button id="poisonPlus" class="bouton_plus">+1</button><button id="poisonMinus" class="bouton_plus">-1</button></div></div>
+    <div style="margin-left:auto" class="muted">Deck: <span id="deckCount">0</span> — Bibliothèque: <span id="libCount">0</span></div>
+  </div>
+
+  
+<br>
+<div class="zone" id="handZone">
+        <div class="zone-title">Main (<span id="handCount">0</span>)</div>
+        <div id="hand" class="hand" aria-live="polite"></div>
+      </div>
+      <br>
+  <div class="layout" id="layout">
+    
+    <!-- left column -->
+    <div class="col">
+      
+      <div class="zone" id="graveZone">
+        <div class="zone-title">Cimetière (<span id="graveCount">0</span>)</div>
+        <div id="graveyard" class="zone-list"></div>
+      </div>
+      <div class="zone" id="exileZone">
+        <div class="zone-title">Exil (<span id="exileCount">0</span>)</div>
+        <div id="exile" class="zone-list"></div>
+      </div>
+    </div>
+
+    <!-- center column (battlefield) -->
+    <div class="col" style="flex:2">
+      <div class="zone battle-wrap" id="battleWrap">
+        <div class="zone-title">Champ de bataille (<span id="bfCount">0</span>)</div>
+        <div id="battlefield" class="battle-area"></div>
+      </div>
+    </div>
+<div id="zoomOverlay" class="hidden">
+  <img id="zoomImage" src="" alt="zoom carte">
+</div>
+
+    <!-- right column -->
+    <div class="col">
+      <div class="zone" id="commandWrap" style="display:none">
+        <div class="zone-title">Zone de commandement</div>
+        <div id="commandZone" class="zone-list"></div>
+      </div>
+
+      <div class="zone" id="tokensZone">
+        <div class="zone-title">Tokens disponibles (cliquer pour créer)</div>
+        <div id="availableTokens" class="zone-list"></div>
+      </div>
+
+      <div class="zone" id="libraryZone" style="display:none">
+        <div class="zone-title">Bibliothèque (masquée)</div>
+        <div id="library" class="zone-list"></div>
+      </div>
+
+    </div>
+  </div>
+<div id="remotePlayersWrap" class="remote-players-wrap"></div>
+  <div id="errors" style="margin-top:8px"></div>
+</div>
+ <script>
+ /* ===========================
+    STATE
+    =========================== */
+ const state = {
+   deck: [],      // full deck objects
+   library: [],   // cards in library (top at index 0)
+   hand: [],
+   battlefield: [],
+   graveyard: [],
+   exile: [],
+   commandZone: [],
+   tokensTemplates: [],
+   tokens: []     // token objects (displayed on battlefield)
+ };
+ // chosen commander remembered when loading a deck
+ state.chosenCommander = null;
+ state.chosenCommanderId = null;
+ let undoStack = [];
+ const UNDO_LIMIT = 200;
+ let handHidden = false;
+ /* ===========================
+    DOM shortcuts
+    =========================== */
+ const $ = id => document.getElementById(id);
+ const deckText = $('deckText'), deckFile = $('deckFile'), loadBtn = $('loadDeck'), loadStatus = $('loadStatus'),
+       drawHandBtn = $('drawHand'), mullBtn = $('mulligan'), shuffleBtn = $('shuffleLib'), toggleHandBtn = $('toggleHand'),
+       handNode = $('hand'), battlefieldNode = $('battlefield'), graveNode = $('graveyard'), exileNode = $('exile'),
+       commandWrap = $('commandWrap'), commandNode = $('commandZone'), availableTokensNode = $('availableTokens'),
+       libraryNode = $('library'), libraryZone = $('libraryZone'),
+       lifeNode = $('life'), poisonNode = $('poison'),
+       deckCountNode = $('deckCount'), libCountNode = $('libCount'), handCountNode = $('handCount'),
+       bfCountNode = $('bfCount'), graveCountNode = $('graveCount'), exileCountNode = $('exileCount'),
+       errorsDiv = $('errors'),
+       funcarteFile = $('funcarteFile'), importFuncarteBtn = $('importFuncartes'), viewFuncarteBtn = $('viewFuncartes'),
+       clearFuncarteBtn = $('clearFuncartes'), funcarteStatus = $('funcarteStatus'),
+       importStateBtn = $('importStateBtn'), importStateFile = $('importStateFile');
+ /* ===========================
+    FUNCARTES DATABASE (localStorage-based)
+    =========================== */
+ const funcarteDB = {
+   _cache: {},
+   _ready: false,
+   _readyPromise: null,
+   _dbName: 'magicPlaymatFuncartes',
+   _storeName: 'cards',
+   loadLegacy() {
+     try {
+       const data = localStorage.getItem('funcarteDatabase');
+       return data ? JSON.parse(data) : {};
+     } catch (e) {
+       console.warn('Failed to load funcarteDatabase:', e);
+       return {};
+     }
+   },
+   saveLegacy(db) {
+     try {
+       localStorage.setItem('funcarteDatabase', JSON.stringify(db));
+     } catch (e) {
+       console.warn('Failed to save funcarteDatabase:', e);
+     }
+   },
+   async _openDb() {
+     return new Promise((resolve, reject) => {
+       const request = indexedDB.open(this._dbName, 3);
+       request.onupgradeneeded = () => {
+         const db = request.result;
+         if (!db.objectStoreNames.contains(this._storeName)) {
+           db.createObjectStore(this._storeName, { keyPath: 'key' });
+         }
+       };
+       request.onsuccess = () => resolve(request.result);
+       request.onerror = () => reject(request.error);
+     });
+   },
+   async _request(request) {
+     return new Promise((resolve, reject) => {
+       request.onsuccess = () => resolve(request.result);
+       request.onerror = () => reject(request.error);
+     });
+   },
+   async _readDb() {
+     const db = await this._openDb();
+     try {
+       const tx = db.transaction(this._storeName, 'readonly');
+       const store = tx.objectStore(this._storeName);
+       const entries = await this._request(store.getAll());
+       if (!Array.isArray(entries) || entries.length === 0) return {};
+       return entries.reduce((acc, entry) => {
+         if (!entry || typeof entry !== 'object' || !entry.key) return acc;
+         const value = entry;
+         acc[entry.key] = {
+           name: value.name || entry.key,
+           imageUrl: value.imageUrl || '',
+           faces: Array.isArray(value.faces) ? value.faces : (value.imageUrl ? [value.imageUrl] : []),
+           isTokenTemplate: !!value.isTokenTemplate
+         };
+         return acc;
+       }, {});
+     } finally {
+       db.close();
+     }
+   },
+   async _writeDb(db) {
+     const dbConnection = await this._openDb();
+     try {
+       const tx = dbConnection.transaction(this._storeName, 'readwrite');
+       const store = tx.objectStore(this._storeName);
+       const existingEntries = await this._request(store.getAll());
+       existingEntries.forEach(entry => {
+         if (entry && entry.key) store.delete(entry.key);
+       });
+       const entries = Object.entries(db || {});
+       for (const [key, value] of entries) {
+         if (!key || !value || typeof value !== 'object') continue;
+         store.put({
+           key,
+           name: value.name || key,
+           imageUrl: value.imageUrl || '',
+           faces: Array.isArray(value.faces) ? value.faces : (value.imageUrl ? [value.imageUrl] : []),
+           isTokenTemplate: !!value.isTokenTemplate
+         });
+       }
+       await new Promise((resolve, reject) => {
+         tx.oncomplete = () => resolve();
+         tx.onerror = () => reject(tx.error || new Error('write failed'));
+         tx.onabort = () => reject(tx.error || new Error('write aborted'));
+       });
+     } finally {
+       dbConnection.close();
+     }
+   },
+   async init() {
+     if (this._readyPromise) return this._readyPromise;
+     this._readyPromise = (async () => {
+       this._cache = this.loadLegacy() || {};
+       try {
+         if (!('indexedDB' in window)) throw new Error('IndexedDB not supported');
+         const stored = await this._readDb();
+         if (stored && typeof stored === 'object') {
+           this._cache = stored;
+         } else if (Object.keys(this._cache).length > 0) {
+           await this.save(this._cache);
+         }
+       } catch (e) {
+         console.warn('IndexedDB unavailable, falling back to localStorage.', e);
+       }
+       this._ready = true;
+       return this._cache;
+     })();
+     return this._readyPromise;
+   },
+   ready() {
+     if (this._ready) return Promise.resolve(this._cache);
+     return this.init();
+   },
+   async load() {
+     return this.ready();
+   },
+   async save(db) {
+     this._cache = db || {};
+     try {
+       await this._writeDb(this._cache);
+     } catch (e) {
+       console.warn('Failed to write funcartes to IndexedDB, falling back to localStorage.', e);
+       this.saveLegacy(this._cache);
+     }
+   },
+   async get(name) {
+     await this.ready();
+     const key = (name || '').toLowerCase().trim();
+     return this._cache[key] || null;
+   },
+   async set(name, imageUrl) {
+     await this.ready();
+     const key = (name || '').toLowerCase().trim();
+     const existing = this._cache[key];
+     if (!existing) {
+       this._cache[key] = { name, imageUrl, faces: [imageUrl] };
+     } else {
+       this._cache[key].name = name || this._cache[key].name;
+       this._cache[key].faces = this._cache[key].faces || (this._cache[key].imageUrl ? [this._cache[key].imageUrl] : []);
+       if (!this._cache[key].faces.includes(imageUrl)) this._cache[key].faces.push(imageUrl);
+       this._cache[key].imageUrl = this._cache[key].faces[0];
+     }
+     await this.save(this._cache);
+     return this._cache[key];
+   },
+   async addMany(cards) {
+     await this.ready();
+     const db = { ...this._cache };
+     for (const card of cards) {
+       const key = (card.name || '').toLowerCase().trim();
+       const existing = db[key];
+       if (!existing) {
+         db[key] = {
+           name: card.name,
+           imageUrl: card.imageUrl,
+           faces: [card.imageUrl],
+           isTokenTemplate: !!card.isTokenTemplate
+         };
+       } else {
+         existing.faces = existing.faces || [];
+         if (!existing.faces.includes(card.imageUrl)) existing.faces.push(card.imageUrl);
+         existing.imageUrl = existing.faces[0];
+         existing.isTokenTemplate = existing.isTokenTemplate || card.isTokenTemplate;
+       }
+     }
+     await this.save(db);
+     return db;
+   },
+   async clear() {
+     this._cache = {};
+     try {
+       const db = await this._openDb();
+       try {
+         const tx = db.transaction(this._storeName, 'readwrite');
+         const store = tx.objectStore(this._storeName);
+         const existingEntries = await this._request(store.getAll());
+         existingEntries.forEach(entry => {
+           if (entry && entry.key) store.delete(entry.key);
+         });
+         await new Promise((resolve, reject) => {
+           tx.oncomplete = () => resolve();
+           tx.onerror = () => reject(tx.error || new Error('clear failed'));
+           tx.onabort = () => reject(tx.error || new Error('clear aborted'));
+         });
+       } finally {
+         db.close();
+       }
+     } catch (e) {
+       console.warn('Failed to clear IndexedDB data.', e);
+     }
+     this.saveLegacy({});
+   },
+   async getAll() {
+     await this.ready();
+     return this._cache;
+   }
+ };
+ // Load funcartes on startup
+ let currentFuncartes = {};
+ funcarteDB.ready().then(db => { currentFuncartes = db; }).catch(() => {});
+ /* ===========================
+    UTILS
+    =========================== */
+ const uid = (p='id') => `${p}-${Math.random().toString(36).slice(2,9)}`;
+ function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
+ function pushUndo(action){
+   undoStack.push(action);
+   if(undoStack.length > UNDO_LIMIT) undoStack.shift();
+   $('undoBtn').disabled = false;
+ }
+ function doUndo(){
+   const act = undoStack.pop();
+   if(!act){ alert('Rien à annuler'); return; }
+   switch(act.type){
+     case 'move': {
+       // move back
+       const {cardId, from, to, index} = act.data;
+       moveCardById(cardId, to, from, true, index);
+       break;
+     }
+     case 'create': {
+       // remove created card (by id) from its zone
+       removeCardById(act.data.cardId);
+       break;
+     }
+     case 'counterAdd': {
+       const {cardId, key, amount} = act.data;
+       const c = findCardById(cardId); if(c){ c.counters[key] = (c.counters[key]||0) - amount; if(c.counters[key] <= 0) delete c.counters[key]; }
+       break;
+     }
+     case 'counterRemove': {
+       const {cardId, key, amount} = act.data;
+       const c = findCardById(cardId); if(c){ c.counters[key] = (c.counters[key]||0) + amount; }
+       break;
+     }
+     case 'draw': {
+       // move last drawn back to top of library
+       const {cards} = act.data;
+       for(let i=cards.length-1;i>=0;i--){
+         const id = cards[i].id;
+         removeCardById(id);
+         state.library.unshift(cards[i]);
+       }
+       break;
+     }
+     case 'mill': {
+       const {cards} = act.data;
+       // move from graveyard back to top of library
+       for(let i=cards.length-1;i>=0;i--){
+         const id = cards[i].id;
+         removeCardById(id);
+         state.library.unshift(cards[i]);
+       }
+       break;
+     }
+     default:
+       console.warn('undo unsupported for', act.type);
+   }
+   renderAll();
+   if(undoStack.length === 0) $('undoBtn').disabled = true;
+ }
+ $('undoBtn').addEventListener('click', doUndo);
+ $('undoBtn').disabled = true;
+ function findCardById(id){
+   const zones = ['deck','library','hand','battlefield','graveyard','exile','commandZone','tokens'];
+   for(const z of zones){
+     if(z === 'tokens'){
+       const t = state.tokens.find(c=>c.id===id); if(t) return t;
+     } else {
+       const a = state[z]; if(!a) continue;
+       const c = a.find(x=>x.id===id); if(c) return c;
+     }
+   }
+   return null;
+ }
+ function removeCardById(id){
+   ['library','hand','battlefield','graveyard','exile','commandZone','tokens','deck'].forEach(z=>{
+     const arr = state[z];
+     if(!arr) return;
+     const i = arr.findIndex(c=>c.id===id);
+     if(i>-1) arr.splice(i,1);
+   });
+ }
+ /* ===========================
+    RENDER
+    =========================== */
+ function updateCounts(){
+   deckCountNode.textContent = state.deck.length;
+   libCountNode.textContent = state.library.length;
+   handCountNode.textContent = state.hand.length;
+   bfCountNode.textContent = (state.battlefield.length + state.tokens.length);
+   graveCountNode.textContent = state.graveyard.length;
+   exileCountNode.textContent = state.exile.length;
+   $('handCount').textContent = state.hand.length;
+ }
+ function makeCardElement(card){
+   const el = document.createElement('div');
+   el.className = 'card' + (card.isToken ? ' token' : '') + (card.tapped ? ' tapped' : '');
+   el.style.backgroundImage = card.image ? `url(${card.image})` : 'linear-gradient(90deg,#444,#666)';
+   el.dataset.id = card.id;
+   el.dataset.name = card.name || '';
+   // counters display
+   if(card.counters){
+     // will be rendered below in render.counters
+   }
+   return el;
+ }
+ function renderCountersOnEl(cardEl, card){
+   // remove existing counters nodes
+   cardEl.querySelectorAll('.counters').forEach(n=>n.remove());
+   for(const [k,v] of Object.entries(card.counters||{})){
+     const s = document.createElement('div'); s.className='counters'; s.textContent = `${k}: ${v}`; cardEl.appendChild(s);
+   }
+ }
+ function renderHand(){
+   handNode.innerHTML = '';
+   for(const c of state.hand){
+     const el = makeCardElement(c);
+     el.classList.toggle('small', false);
+     // event handlers
+     el.addEventListener('click', ()=>{ moveCardById(c.id, 'hand', 'battlefield'); });
+     el.addEventListener('contextmenu', (e)=>{ e.preventDefault(); openContextMenuForCard(e, c, 'hand'); });
+     addLongPress(el, (e)=> openContextMenuForCard(e, c, 'hand'));
+     renderCountersOnEl(el, c);
+     handNode.appendChild(el);
+   }
+   if(handHidden){
+     handNode.querySelectorAll('.card').forEach(img=> img.style.backgroundImage = 'url(https://cards.scryfall.io/back.png)');
+   }
+ }
+ function renderBattlefield(){
+   battlefieldNode.innerHTML = '';
+   // create container area that has bounds
+   const wrap = battlefieldNode;
+   // place each battlefield card absolutely
+   const all = state.battlefield.concat(state.tokens);
+   for(const c of all){
+     const el = makeCardElement(c);
+     el.style.position = 'absolute';
+     el.style.left = (c.x ?? 20) + 'px';
+     el.style.top = (c.y ?? 20) + 'px';
+     el.dataset.id = c.id;
+     // interactions
+     el.addEventListener('contextmenu', (e)=>{ e.preventDefault(); openContextMenuForCard(e, c, c.isToken ? 'tokens' : 'battlefield'); });
+     addLongPress(el, (e)=> openContextMenuForCard(e, c, c.isToken ? 'tokens' : 'battlefield'));
+     // double click tap
+     el.addEventListener('dblclick', ()=>{ c.tapped = !c.tapped; renderAll(); });
+     // drag within bounds
+     attachPointerDrag(el, c, wrap);
+     renderCountersOnEl(el, c);
+     wrap.appendChild(el);
+   }
+ }
+ function renderZonesSmall(){
+   // graveyard
+   graveNode.innerHTML = '';
+   for(const c of state.graveyard){
+     const el = makeCardElement(c); el.classList.add('small');
+     el.addEventListener('contextmenu', (e)=>{ e.preventDefault(); openContextMenuForCard(e, c, 'graveyard'); });
+     addLongPress(el, (e)=> openContextMenuForCard(e, c, 'graveyard'));
+     renderCountersOnEl(el, c);
+     graveNode.appendChild(el);
+   }
+   // exile
+   exileNode.innerHTML = '';
+   for(const c of state.exile){
+     const el = makeCardElement(c); el.classList.add('small');
+     el.addEventListener('contextmenu', (e)=>{ e.preventDefault(); openContextMenuForCard(e, c, 'exile'); });
+     addLongPress(el, (e)=> openContextMenuForCard(e, c, 'exile'));
+     renderCountersOnEl(el, c);
+     exileNode.appendChild(el);
+   }
+   // command
+   commandNode.innerHTML = '';
+   for(const c of state.commandZone){
+     const el = makeCardElement(c);
+     el.addEventListener('contextmenu', (e)=>{ e.preventDefault(); openContextMenuForCard(e, c, 'commandZone'); });
+     addLongPress(el, (e)=> openContextMenuForCard(e, c, 'commandZone'));
+     renderCountersOnEl(el, c);
+     commandNode.appendChild(el);
+   }
+   commandWrap.style.display = state.commandZone.length ? 'block' : 'none';
+   // tokens templates
+   availableTokensNode.innerHTML = '';
+   for(const t of state.tokensTemplates){
+     const el = makeCardElement(t); el.classList.add('small'); el.style.cursor = 'pointer';
+     el.addEventListener('click', ()=>{ const tk = createTokenFromTemplate(t); state.tokens.push(tk); pushUndo({type:'create', data:{cardId:tk.id, to:'tokens'}}); renderAll(); });
+     availableTokensNode.appendChild(el);
+   }
+   // library view hidden but we can show small preview if needed
+   libraryNode.innerHTML = '';
+   // keep library hidden by default (as requested)
+ }
+ function cloneSerializable(value){
+   try { return JSON.parse(JSON.stringify(value)); }
+   catch(e){ return value; }
+ }
+ function buildExportPayload(){
+   return {
+     version: 1,
+     exportedAt: new Date().toISOString(),
+     state: {
+       deck: (state.deck || []).map(cloneSerializable),
+       library: (state.library || []).map(cloneSerializable),
+       hand: (state.hand || []).map(cloneSerializable),
+       battlefield: (state.battlefield || []).map(cloneSerializable),
+       graveyard: (state.graveyard || []).map(cloneSerializable),
+       exile: (state.exile || []).map(cloneSerializable),
+       commandZone: (state.commandZone || []).map(cloneSerializable),
+       tokensTemplates: (state.tokensTemplates || []).map(cloneSerializable),
+       tokens: (state.tokens || []).map(cloneSerializable),
+       chosenCommander: state.chosenCommander ? cloneSerializable(state.chosenCommander) : null,
+       chosenCommanderId: state.chosenCommanderId || null
+     },
+     ui: {
+       life: parseInt(lifeNode.textContent) || 40,
+       commanderDamage: parseInt($('degat_du_co').textContent) || 0,
+       poison: parseInt(poisonNode.textContent) || 0,
+       handHidden: !!handHidden
+     }
+   };
+ }
+ function restoreImportedState(data){
+   const payload = data && data.state ? data.state : data;
+   if(!payload){ throw new Error('État invalide'); }
+   state.deck = (payload.deck || []).map(cloneSerializable);
+   state.library = (payload.library || []).map(cloneSerializable);
+   state.hand = (payload.hand || []).map(cloneSerializable);
+   state.battlefield = (payload.battlefield || []).map(cloneSerializable);
+   state.graveyard = (payload.graveyard || []).map(cloneSerializable);
+   state.exile = (payload.exile || []).map(cloneSerializable);
+   state.commandZone = (payload.commandZone || []).map(cloneSerializable);
+   state.tokensTemplates = (payload.tokensTemplates || []).map(cloneSerializable);
+   state.tokens = (payload.tokens || []).map(cloneSerializable);
+   state.chosenCommander = payload.chosenCommander ? cloneSerializable(payload.chosenCommander) : null;
+   state.chosenCommanderId = payload.chosenCommanderId || null;
+   if(state.chosenCommanderId){
+     const found = state.commandZone.find(c => c.id === state.chosenCommanderId);
+     if(found){ state.chosenCommander = found; }
+   }
+   const ui = (data && data.ui) || {};
+   lifeNode.textContent = String(ui.life ?? 40);
+   $('degat_du_co').textContent = String(ui.commanderDamage ?? 0);
+   poisonNode.textContent = String(ui.poison ?? 0);
+   handHidden = !!ui.handHidden;
+   $('toggleHand').textContent = handHidden ? 'Révéler main' : 'Cacher main';
+   undoStack = [];
+   $('undoBtn').disabled = true;
+   updateGameOverDisplay();
+   renderAll();
+ }
+ function updateGameOverDisplay(){
+     const life = parseInt(lifeNode.textContent);
+     const commander = parseInt($('degat_du_co').textContent);
+     const poison = parseInt(poisonNode.textContent);
+     // On enlève les anciennes couleurs
+     document.body.classList.remove("game-over");
+     $("lifeStat").classList.remove("lose");
+     $("coStat").classList.remove("lose");
+     $("poisonStat").classList.remove("lose");
+     if(life <= 0){
+         document.body.classList.add("game-over");
+         $("lifeStat").classList.add("lose");
+     }
+     if(commander >= 21){
+         document.body.classList.add("game-over");
+         $("coStat").classList.add("lose");
+     }
+     if(poison >= 10){
+         document.body.classList.add("game-over");
+         $("poisonStat").classList.add("lose");
+     }
+ }
+ function renderAll(){
+   renderHand();
+   renderBattlefield();
+   renderZonesSmall();
+   updateCounts();
+ }
+ /* ===========================
+    DRAG (pointer) with clamp to battlefield bounds
+    =========================== */
+ function attachPointerDrag(el, card, container){
+   let dragging=null;
+   el.addEventListener('pointerdown', (event)=>{
+     event.preventDefault();
+     el.setPointerCapture(event.pointerId);
+     const rect = container.getBoundingClientRect();
+     const elRect = el.getBoundingClientRect();
+     dragging = {
+       pointerId: event.pointerId,
+       startX: event.clientX, startY: event.clientY,
+       origX: el.offsetLeft, origY: el.offsetTop,
+       parentRect: rect
+     };
+   });
+   window.addEventListener('pointermove', (event)=>{
+     if(!dragging) return;
+     const dx = event.clientX - dragging.startX;
+     const dy = event.clientY - dragging.startY;
+     const nx = dragging.origX + dx;
+     const ny = dragging.origY + dy;
+     // clamp inside container
+     const maxX = dragging.parentRect.width - parseFloat(getComputedStyle(el).width);
+     const maxY = dragging.parentRect.height - parseFloat(getComputedStyle(el).height);
+     const clampedX = clamp(nx, 0, Math.max(0, maxX));
+     const clampedY = clamp(ny, 0, Math.max(0, maxY));
+     el.style.left = clampedX + 'px';
+     el.style.top = clampedY + 'px';
+     // update state position
+     card.x = clampedX; card.y = clampedY;
+   });
+   window.addEventListener('pointerup', (event)=>{
+     if(!dragging) return;
+     try{ el.releasePointerCapture(dragging.pointerId); }catch(_){}
+     dragging = null;
+     // push move undo? we could store last move action but skip for simplicity
+   });
+ }
+ /* ===========================
+    CONTEXT MENU (draggable header; inputs accept keyboard)
+    =========================== */
+ let currentMenu = null;
+ function setCardFaceVisibility(card, faceDown){
+   if (faceDown) {
+     if (!card.isFaceDown) {
+       card._faceUpImage = card.image || card._faceUpImage || '';
+       card.image = card.backImage || 'https://cards.scryfall.io/back.png';
+     }
+     card.isFaceDown = true;
+   } else {
+     card.isFaceDown = false;
+     if (card._faceUpImage) {
+       card.image = card._faceUpImage;
+       delete card._faceUpImage;
+     }
+   }
+   renderAll();
+   closeMenu();
+ }
+ function openContextMenuForCard(event, cardObj, fromZone){
+   // remove existing
+   if(currentMenu){ currentMenu.remove(); currentMenu = null; }
+   const menu = document.createElement('div'); menu.className = 'context-menu';
+   // --- Zoom preview ---
+   const zoomImg = document.getElementById('zoomImage');
+   zoomImg.src = cardObj.image || '';
+   document.getElementById('zoomOverlay').classList.remove('hidden');
+   document.getElementById('zoomOverlay').onclick = ()=> {
+     document.getElementById('zoomOverlay').classList.add('hidden');
+   };
+   // Position the menu next to the enlarged card, not over it
+   const zoomRect = zoomImg.getBoundingClientRect();
+   const menuWidth = 260;
+   const menuHeight = 360;
+   let left = zoomRect.right + 16;
+   let top = zoomRect.top + 8;
+   if (left + menuWidth > window.innerWidth - 8) {
+     left = zoomRect.left - menuWidth - 16;
+   }
+   if (left < 8) left = 8;
+   if (top + menuHeight > window.innerHeight - 8) {
+     top = Math.max(8, window.innerHeight - menuHeight - 8);
+   }
+   if (top < 8) top = 8;
+   menu.style.left = left + 'px';
+   menu.style.top = top + 'px';
+   // header (drag handle)
+   const header = document.createElement('div'); header.className = 'menu-header'; header.innerHTML = `<div style="font-weight:600">${cardObj.name||'(sans nom)'}</div><div style="opacity:0.8">${fromZone}</div>`;
+   menu.appendChild(header);
+   const items = document.createElement('div'); items.className = 'menu-items';
+   if (fromZone === 'hand') {
+     const handNav = document.createElement('div'); handNav.className = 'row';
+     const prevBtn = document.createElement('button'); prevBtn.textContent = '←';
+     const nextBtn = document.createElement('button'); nextBtn.textContent = '→';
+     const currentLabel = document.createElement('span'); currentLabel.className = 'muted'; currentLabel.textContent = 'Main';
+     const handCards = state.hand || [];
+     let currentIndex = handCards.findIndex(c => c.id === cardObj.id);
+     if (currentIndex < 0) currentIndex = 0;
+     const updateNavLabel = () => {
+       const total = handCards.length || 1;
+       currentLabel.textContent = `${currentIndex + 1}/${total}`;
+     };
+     const openHandCard = (index) => {
+       const target = handCards[index];
+       if (!target) return;
+       const targetEvent = { currentTarget: { getBoundingClientRect: () => event.currentTarget.getBoundingClientRect() } };
+       openContextMenuForCard(targetEvent, target, 'hand');
+     };
+     prevBtn.addEventListener('click', () => {
+       const index = (currentIndex - 1 + handCards.length) % handCards.length;
+       currentIndex = index;
+       updateNavLabel();
+       openHandCard(index);
+     });
+     nextBtn.addEventListener('click', () => {
+       const index = (currentIndex + 1) % handCards.length;
+       currentIndex = index;
+       updateNavLabel();
+       openHandCard(index);
+     });
+     updateNavLabel();
+     handNav.appendChild(prevBtn);
+     handNav.appendChild(currentLabel);
+     handNav.appendChild(nextBtn);
+     items.appendChild(handNav);
+     items.appendChild(document.createElement('hr'));
+   }
+   // Move targets
+   const addMoveBtn = (label, dest) => {
+     const b = document.createElement('button'); b.textContent = label;
+     b.addEventListener('click', ()=>{ moveCardById(cardObj.id, fromZone, dest); closeMenu(); });
+     items.appendChild(b);
+   };
+   addMoveBtn('→ Main','hand');
+   addMoveBtn('→ Champ','battlefield');
+   addMoveBtn('→ Cimetière','graveyard');
+   addMoveBtn('→ Exil','exile');
+   addMoveBtn('→ Zone de commandement','commandZone');
+   addMoveBtn('Bibliothèque (dessus)','libraryTop');
+   addMoveBtn('Bibliothèque (dessous)','libraryBottom');
+   if(isDoubleFaced(cardObj)){
+     const transformBtn = document.createElement("button");
+     transformBtn.textContent = "Transformer";
+     transformBtn.addEventListener("click", ()=>{
+         transformCard(cardObj);
+         renderAll();
+         closeMenu();
+     });
+     items.appendChild(transformBtn);
+ }
+   // Face visibility (battlefield / graveyard / exile)
+   const faceToggleZones = ['battlefield', 'graveyard', 'exile'];
+   if (faceToggleZones.includes(fromZone)) {
+     const faceToggleBtn = document.createElement('button');
+     faceToggleBtn.textContent = cardObj.isFaceDown ? 'Face visible' : 'Face cachée';
+     faceToggleBtn.addEventListener('click', ()=>{ setCardFaceVisibility(cardObj, !cardObj.isFaceDown); });
+     items.appendChild(faceToggleBtn);
+     items.appendChild(document.createElement('hr'));
+   }
+   // Copy/token
+   const copyBtn = document.createElement('button'); copyBtn.textContent = 'Créer copie/token';
+   copyBtn.addEventListener('click', ()=>{ const copy = shallowCopyCard(cardObj); state.tokens.push(copy); pushUndo({type:'create', data:{cardId:copy.id, to:'tokens'}}); renderAll(); closeMenu(); });
+   items.appendChild(copyBtn);
+   items.appendChild(document.createElement('hr'));
+   // +1/+1 add
+   const addPlusRow = document.createElement('div'); addPlusRow.className='row';
+   const plusInput = document.createElement('input'); plusInput.type='number'; plusInput.min='1'; plusInput.value='1'; plusInput.placeholder='x';
+   const plusBtn = document.createElement('button'); plusBtn.textContent = 'Ajouter +1/+1';
+   plusBtn.addEventListener('click', ()=>{ const n = Math.max(1, parseInt(plusInput.value)||1); cardObj.counters['+1/+1'] = (cardObj.counters['+1/+1']||0) + n; pushUndo({type:'counterAdd', data:{cardId:cardObj.id, key:'+1/+1', amount:n}}); renderAll(); closeMenu(); });
+   addPlusRow.appendChild(plusInput); addPlusRow.appendChild(plusBtn); items.appendChild(addPlusRow);
+   // custom marker
+   const customRow = document.createElement('div'); customRow.className='row';
+   const customName = document.createElement('input'); customName.placeholder='Nom marqueur';
+   const customNum = document.createElement('input'); customNum.type='number'; customNum.min='1'; customNum.value='1'; customNum.style.width='72px';
+   const customBtn = document.createElement('button'); customBtn.textContent='Ajouter';
+   customBtn.addEventListener('click', ()=>{ const k = (customName.value||'').trim(); if(!k) { alert('Nom requis'); return; } const n = Math.max(1, parseInt(customNum.value)||1); cardObj.counters[k] = (cardObj.counters[k]||0) + n; pushUndo({type:'counterAdd', data:{cardId:cardObj.id, key:k, amount:n}}); renderAll(); closeMenu(); });
+   customRow.appendChild(customName); customRow.appendChild(customNum); customRow.appendChild(customBtn);
+   items.appendChild(customRow);
+   // remove counters for existing keys
+   const keys = Object.keys(cardObj.counters || {});
+   if(keys.length){
+     items.appendChild(document.createElement('hr'));
+     keys.forEach(k=>{
+       const row = document.createElement('div'); row.className='row';
+       const num = document.createElement('input'); num.type='number'; num.min='1'; num.value='1'; num.style.width='72px';
+       const btn = document.createElement('button'); btn.textContent = `Retirer ${k}`;
+       btn.addEventListener('click', ()=>{ const n = Math.max(1, parseInt(num.value)||1); const prev = (cardObj.counters[k]||0); const removed = Math.min(prev, n); cardObj.counters[k] = prev - removed; if(cardObj.counters[k] <= 0) delete cardObj.counters[k]; pushUndo({type:'counterRemove', data:{cardId:cardObj.id, key:k, amount:removed}}); renderAll(); closeMenu(); });
+       row.appendChild(num); row.appendChild(btn); items.appendChild(row);
+     });
+   }
+   menu.appendChild(items);
+   document.body.appendChild(menu);
+   currentMenu = menu;
+   // make draggable by header
+   makeMenuDraggable(menu, header);
+   // keep menu inside viewport if possible
+   const r = menu.getBoundingClientRect();
+   if(r.right > window.innerWidth) menu.style.left = (window.innerWidth - r.width - 8) + 'px';
+   if(r.bottom > window.innerHeight) menu.style.top = (window.innerHeight - r.height - 8) + 'px';
+   // stop clicks inside menu closing it
+   menu.addEventListener('click', (event)=> event.stopPropagation());
+   setTimeout(()=> document.addEventListener('click', closeMenuOnOutside, {once:true}), 10);
+ }
+ function closeMenuOnOutside(e){ if(currentMenu && !e.target.closest('.context-menu')){ currentMenu.remove(); currentMenu = null; } }
+ function closeMenu(){ if(currentMenu){ currentMenu.remove(); currentMenu = null; } }
+ function makeMenuDraggable(menu, handle){
+   let dragging = null;
+   handle.addEventListener('pointerdown', (e)=>{
+     dragging = {startX:e.clientX, startY:e.clientY, origLeft: parseFloat(menu.style.left||0), origTop: parseFloat(menu.style.top||0)};
+     function onMove(event){ if(!dragging) return; const dx = event.clientX - dragging.startX, dy = event.clientY - dragging.startY; menu.style.left = (dragging.origLeft + dx) + 'px'; menu.style.top = (dragging.origTop + dy) + 'px'; }
+     function onUp(){ window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); dragging=null; }
+     window.addEventListener('pointermove', onMove); window.addEventListener('pointerup', onUp);
+   });
+ }
+ /* ===========================
+    MOVE / COPY / ZONE LOGIC (state-based)
+    =========================== */
+ function findAndRemoveById(id){
+   for(const zone of ['library','hand','battlefield','graveyard','exile','commandZone','tokens','deck']){
+     const arr = state[zone];
+     if(!arr) continue;
+     const idx = arr.findIndex(c=>c.id === id);
+     if(idx > -1) return arr.splice(idx,1)[0];
+   }
+   return null;
+ }
+ function moveCardById(cardId, fromZone, toZone, isUndo=false, fromIndex){
+   // find card object and remove from its current array
+   const card = findAndRemoveById(cardId);
+   card.tapped=false;
+   if(!card) return;
+   // destination
+   let targetArr;
+   if(toZone === 'hand') targetArr = state.hand;
+   else if(toZone === 'battlefield') targetArr = state.battlefield;
+   else if(toZone === 'graveyard') targetArr = state.graveyard;
+   else if(toZone === 'exile') targetArr = state.exile;
+   else if(toZone === 'commandZone') targetArr = state.commandZone;
+   else if(toZone === 'libraryTop') { state.library.unshift(card); pushUndo({type:'move', data:{cardId:card.id, from:fromZone, to:toZone, index:fromIndex}}); renderAll(); return; }
+   else if(toZone === 'libraryBottom') { state.library.push(card); pushUndo({type:'move', data:{cardId:card.id, from:fromZone, to:toZone, index:fromIndex}}); renderAll(); return; }
+   else if(toZone === 'tokens') { state.tokens.push(card); pushUndo({type:'move', data:{cardId:card.id, from:fromZone, to:toZone, index:fromIndex}}); renderAll(); return; }
+   else targetArr = state[toZone] || state.hand;
+   targetArr.push(card);
+   if(!isUndo) pushUndo({type:'move', data:{cardId:card.id, from:fromZone, to:toZone, index:fromIndex}});
+   renderAll();
+ }
+ /* shallow copy for tokens */
+ function shallowCopyCard(card){
+   const copy = {
+     id: uid('copy'),
+     name: card.name,
+     image: card.image,
+     raw: card.raw,
+     counters: {...(card.counters||{})},
+     tapped: false,
+     isToken: true,
+     x: (card.x||20) + 16,
+     y: (card.y||20) + 16
+   };
+   return copy;
+ }
+ function afficherFuncartesSection(){
+  const section = document.getElementById('funcarteSection');
+  section.style.display = section.style.display === 'none' ? 'block' : 'none';
+  const btn = document.getElementById('funcartes');
+  btn.classList.toggle('btn_utilise', section.style.display !== 'none');
+ }
+ /* ===========================
+    COUNTERS helpers (via menu)
+    =========================== */
+ // See menu handlers above that modify card.counters and push undo entries
+ /* ===========================
+    DRAW / MILL / TUTOR
+    =========================== */
+ function drawX(n){
+   if(n <= 0) return;
+   const drawn = [];
+   for(let i=0;i<n;i++){
+     if(state.library.length === 0) break;
+     const c = state.library.shift();
+     state.hand.push(c);
+     drawn.push(c);
+   }
+   if(drawn.length) pushUndo({type:'draw', data:{cards:drawn}});
+   renderAll();
+ }
+ function millX(n){
+   if(n <= 0) return;
+   const milled = [];
+   for(let i=0;i<n;i++){
+     if(state.library.length === 0) break;
+     const c = state.library.shift();
+     state.graveyard.unshift(c);
+     milled.push(c);
+   }
+   if(milled.length) pushUndo({type:'mill', data:{cards:milled}});
+   renderAll();
+ }
+ function tutorByName(name){
+   if(!name) return alert('Nom requis');
+   const idx = state.library.findIndex(c=> (c.name||'').toLowerCase() === name.toLowerCase());
+   if(idx > -1){ state.hand.push(state.library.splice(idx,1)[0]); renderAll(); return; }
+   const idx2 = state.library.findIndex(c=> (c.name||'').toLowerCase().includes(name.toLowerCase()));
+   if(idx2 > -1){ state.hand.push(state.library.splice(idx2,1)[0]); renderAll(); return; }
+   alert('Carte non trouvée dans la bibliothèque.');
+ }
+ /* ===========================
+    Scryfall fetch & deck load (supports CSV & TXT)
+    =========================== */
+ function normalizeCardName(name){
+   let norm = (name||'').replace(/[\u2018\u2019\u201C\u201D]/g, "'").replace(/\u00A0/g,' ').replace(/\s+/g,' ').trim();
+   try{ norm = norm.normalize('NFD').replace(/\p{Diacritic}/gu,''); }catch(e){}
+   return norm;
+ }
+ function fileToDataUrl(file){
+   return new Promise((resolve, reject) => {
+     const reader = new FileReader();
+     reader.onload = () => resolve(reader.result);
+     reader.onerror = () => reject(new Error('Impossible de lire le fichier'));
+     reader.readAsDataURL(file);
+   });
+ }
+ async function compressImageDataUrl(file, { maxWidth = 320, quality = 0.6 } = {}){
+   const dataUrl = await fileToDataUrl(file);
+   const img = await new Promise((resolve, reject) => {
+     const image = new Image();
+     image.onload = () => resolve(image);
+     image.onerror = () => reject(new Error('Image invalide'));
+     image.src = dataUrl;
+   });
+   const canvas = document.createElement('canvas');
+   const scale = Math.min(1, maxWidth / Math.max(img.width, 1));
+   canvas.width = Math.max(1, Math.round(img.width * scale));
+   canvas.height = Math.max(1, Math.round(img.height * scale));
+   const ctx = canvas.getContext('2d');
+   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+   const mimeType = file.type && file.type.startsWith('image/png') ? 'image/png' : 'image/jpeg';
+   return canvas.toDataURL(mimeType, mimeType === 'image/png' ? undefined : quality);
+ }
+ const scryfallSuccessCache = new Map();
+ const scryfallPendingCache = new Map();
+ async function fetchJsonWithTimeout(url, options = {}, timeoutMs = 6000){
+   const controller = new AbortController();
+   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+   try {
+     const response = await fetch(url, { ...options, signal: controller.signal });
+     const text = await response.text();
+     if (!response.ok) {
+       throw new Error(`HTTP ${response.status}${text ? `: ${text.slice(0, 120)}` : ''}`);
+     }
+     try {
+       return JSON.parse(text);
+     } catch {
+       return text;
+     }
+   } finally {
+     clearTimeout(timeoutId);
+   }
+ }
+ async function fetchCardByName(name){
+   const enc = s => encodeURIComponent(s);
+   const norm = normalizeCardName(name);
+   const normKey = norm.toLowerCase();
+   await funcarteDB.ready();
+   // 1. Check local funcartes database first (try normalized key and raw)
+   const localCard = await funcarteDB.get(normKey) || await funcarteDB.get(norm) || await funcarteDB.get(name);
+   if(localCard){
+     // if multiple faces stored, mimic Scryfall double-faced structure
+     if(Array.isArray(localCard.faces) && localCard.faces.length > 1){
+       const card_faces = localCard.faces.map((img, idx)=>({ name: localCard.name, image_uris: { normal: img } }));
+       return { error:false, data: { name: localCard.name, card_faces, object: 'custom_funcard', isFuncard: true } };
+     }
+     return {
+       error: false,
+       data: {
+         name: localCard.name,
+         image_uris: { normal: localCard.imageUrl },
+         object: 'custom_funcard',
+         isFuncard: true
+       }
+     };
+   }
+   if (scryfallSuccessCache.has(normKey)) {
+     return scryfallSuccessCache.get(normKey);
+   }
+   if (scryfallPendingCache.has(normKey)) {
+     return scryfallPendingCache.get(normKey);
+   }
+   const pending = (async () => {
+     const sleep = (ms) => new Promise(r=>setTimeout(r,ms));
+     const maxAttempts = 4;
+     const exactPhraseQuery = `!\\"${norm.replace(/\\"/g,'')}\\"`;
+     const urls = [
+       `https://api.scryfall.com/cards/named?exact=${enc(norm)}`,
+       `https://api.scryfall.com/cards/named?fuzzy=${enc(norm)}`,
+       `https://api.scryfall.com/cards/search?q=${enc(exactPhraseQuery)}`,
+       `https://api.scryfall.com/cards/search?q=${enc(norm)}`
+     ];
+     let lastError = null;
+     for(let attempt=1; attempt<=maxAttempts; attempt++){
+       for(const url of urls){
+         try{
+           const payload = await fetchJsonWithTimeout(url, { headers: { Accept: 'application/json' } }, 7000 + attempt * 500);
+           if(payload && payload.object !== 'error') {
+             const result = { error:false, data: payload.object === 'list' && Array.isArray(payload.data) && payload.data.length > 0 ? payload.data[0] : payload };
+             scryfallSuccessCache.set(normKey, result);
+             return result;
+           }
+           if(payload && payload.object === 'list' && Array.isArray(payload.data) && payload.data.length > 0){
+             const result = { error:false, data: payload.data[0] };
+             scryfallSuccessCache.set(normKey, result);
+             return result;
+           }
+           const message = payload?.details || payload?.message || 'not found';
+           if(message && message !== 'not found') {
+             lastError = new Error(message);
+           }
+         } catch(e){
+           lastError = e;
+         }
+       }
+       if(attempt < maxAttempts){
+         await sleep(400 * attempt);
+         continue;
+       }
+       return { error:true, message: lastError?.message || 'fetch error' };
+     }
+   })();
+   scryfallPendingCache.set(normKey, pending);
+   try {
+     return await pending;
+   } finally {
+     scryfallPendingCache.delete(normKey);
+   }
+ }
+ function chooseImageFromData(data){
+   return data.image_uris?.normal || data.card_faces?.[0]?.image_uris?.normal || data.image_uris?.large || '';
+ }
+ function isDoubleFaced(card){
+     // Cartes Scryfall
+     if(
+         card.raw &&
+         Array.isArray(card.raw.card_faces) &&
+         card.raw.card_faces.length >= 2
+     ){
+         return true;
+     }
+     // Funcartes / jetons
+     if(
+         card.raw &&
+         Array.isArray(card.raw.faces) &&
+         card.raw.faces.length >= 2
+     ){
+         return true;
+     }
+     return false;
+ }
+ function transformCard(card){
+     if(!isDoubleFaced(card)) return;
+     card.face = card.face || 0;
+     card.face = 1 - card.face;
+     const raw = card.raw || {};
+     const faceIndex = card.face ?? 0;
+     let faceData = null;
+     if(Array.isArray(raw.card_faces) && raw.card_faces.length >= 2){
+         faceData = raw.card_faces[faceIndex];
+         if(faceData){
+             card.name = faceData.name || card.name;
+             card.image = faceData.image_uris?.normal || faceData.image_uris?.large || faceData.image || card.image;
+             return;
+         }
+     }
+     if(Array.isArray(raw.faces) && raw.faces.length >= 2){
+         const face = raw.faces[faceIndex];
+         if(typeof face === 'string'){
+             card.name = raw.name || card.name;
+             card.image = face;
+             return;
+         }
+         if(face && typeof face === 'object'){
+             card.name = face.name || raw.name || card.name;
+             card.image = face.imageUrl || face.image || face.image_uris?.normal || face.image_uris?.large || card.image;
+             return;
+         }
+     }
+     card.image = card.image || '';
+ }
+
+ deckFile.addEventListener('change', (e)=>{
+   const f = e.target.files && e.target.files[0];
+   if(!f) return;
+   const reader = new FileReader();
+   reader.onload = (ev)=> deckText.value = ev.target.result;
+   reader.readAsText(f);
+ });
+ $('loadDeck').addEventListener('click', async ()=>{
+   const lines = deckText.value.split('\n').map(l=>l.trim()).filter(Boolean);
+   if(lines.length === 0) return alert('Colle une decklist ou importe un fichier .txt');
+   $('loadStatus').style.display = 'inline';
+   errorsDiv.innerHTML = '';
+   state.deck = []; state.library = []; state.hand=[]; state.battlefield=[]; state.graveyard=[]; state.exile=[]; state.commandZone=[]; state.tokensTemplates=[]; state.tokens=[];
+   const errors = [];
+   const tokenIds = new Set();
+   await funcarteDB.ready();
+   const parsedEntries = lines.map(rawLine => {
+     const m = rawLine.match(/^\s*(\d+)\s+(.+)$/);
+     if (m) {
+       return { qty: parseInt(m[1], 10), name: m[2], isTokenLine: false };
+     }
+     return { qty: 1, name: rawLine.trim(), isTokenLine: true };
+   });
+   const results = await Promise.all(parsedEntries.map(async entry => {
+     const { qty, name, isTokenLine } = entry;
+     if (isTokenLine) {
+       const local = await funcarteDB.get(name);
+       if (local && local.isTokenTemplate) {
+         return { type: 'tokenTemplate', value: { id: uid('tmpl'), name: local.name, image: local.imageUrl, raw: local, isToken: true } };
+       }
+     }
+     const res = await fetchCardByName(name);
+     if (res.error) {
+       return { type: 'error', value: `${name}: ${res.message}` };
+     }
+     const data = res.data;
+     if (Array.isArray(data.all_parts)) {
+       data.all_parts.forEach(p => { if(p.component === 'token') tokenIds.add(p.id); });
+     }
+     const cards = [];
+     for(let i=0;i<qty;i++){
+       cards.push({
+         id: uid('card'),
+         name: data.name || (data.card_faces?.[0]?.name) || name,
+         image: chooseImageFromData(data),
+         raw: data,
+         counters: {},
+         tapped: false,
+         face: 0,
+         zone: 'deck',
+         x: 20 + Math.random() * 200,
+         y: 20 + Math.random() * 200,
+         isToken: false
+       });
+     }
+     return { type: 'cards', value: cards };
+   }));
+   for (const result of results) {
+     if (result.type === 'tokenTemplate') {
+       state.tokensTemplates.push(result.value);
+     } else if (result.type === 'error') {
+       errors.push(result.value);
+     } else if (result.type === 'cards') {
+       state.deck.push(...result.value);
+     }
+   }
+   // fetch token templates
+   const tokenPromises = Array.from(tokenIds).map(async tid => {
+     try{
+       const d = await fetchJsonWithTimeout(`https://api.scryfall.com/cards/${encodeURIComponent(tid)}`, { headers: { Accept: 'application/json' } }, 6000);
+       if(d && d.object !== 'error') state.tokensTemplates.push({ id: uid('tmpl'), name: d.name, image: chooseImageFromData(d), raw:d });
+     }catch(e){ console.warn('token fetch error', e); }
+   });
+   await Promise.allSettled(tokenPromises);
+   // build library: shuffle deck
+   state.library = shuffleArray(state.deck.slice());
+   // ask commander
+   const cmd = prompt('Nom du commandant (laisser vide si aucun) :');
+   if(cmd && cmd.trim()){
+     // try find in library
+     const idx = state.library.findIndex(c => (c.name||'').toLowerCase() === cmd.trim().toLowerCase());
+     if(idx > -1){
+       const card = state.library.splice(idx,1)[0];
+       state.commandZone.push(card);
+       // memorize chosen commander so we can restore it on new games
+       state.chosenCommander = card;
+       state.chosenCommanderId = card.id;
+       commandWrap.style.display = 'block';
+     } else {
+       // fuzzy search
+       const idx2 = state.library.findIndex(c => (c.name||'').toLowerCase().includes(cmd.trim().toLowerCase()));
+       if(idx2 > -1){
+         const card = state.library.splice(idx2,1)[0];
+         state.commandZone.push(card);
+         state.chosenCommander = card;
+         state.chosenCommanderId = card.id;
+         commandWrap.style.display = 'block';
+       } else {
+         // try fetching if not present
+         const fetched = await Promise.race([
+           fetchCardByName(cmd.trim()),
+           new Promise(resolve => setTimeout(() => resolve({ error:true, message:'timeout' }), 2500))
+         ]);
+         if(!fetched.error){
+           const d = fetched.data;
+           const card = { id: uid('card'), name: d.name, image: chooseImageFromData(d), raw:d, counters:{}, tapped:false };
+           state.commandZone.push(card);
+           // fetched commander (not originally in deck) — remember it too
+           state.chosenCommander = card;
+           state.chosenCommanderId = card.id;
+           commandWrap.style.display = 'block';
+         } else {
+           const fallbackCard = {
+             id: uid('card'),
+             name: cmd.trim(),
+             image: '',
+             raw: { name: cmd.trim() },
+             counters:{},
+             tapped:false
+           };
+           state.commandZone.push(fallbackCard);
+           state.chosenCommander = fallbackCard;
+           state.chosenCommanderId = fallbackCard.id;
+           commandWrap.style.display = 'block';
+         }
+       }
+     }
+   } else {
+     commandWrap.style.display = 'none';
+     state.chosenCommander = null; state.chosenCommanderId = null;
+   }
+   renderAll();
+   if(errors.length) errorsDiv.innerHTML = '<div class="err">Erreurs :</div><ul style="color:#ffcccc">'+errors.map(e=>`<li>${e}</li>`).join('')+'</ul>';
+   $('loadStatus').style.display = 'none';
+ });
+ /* ===========================
+    FUNCARTES handlers
+    =========================== */
+ importFuncarteBtn.addEventListener('click', async ()=>{
+   const files = Array.from(funcarteFile.files || []);
+   await funcarteDB.ready();
+   if(files.length === 0) return alert('Sélectionne au moins un fichier PNG');
+   funcarteStatus.style.display = 'inline';
+   funcarteStatus.textContent = 'Importation…';
+   const validFiles = files.filter(f =>
+     f.type === 'image/png' ||
+     f.type === 'image/jpeg' ||
+     f.name.toLowerCase().endsWith('.png') ||
+     f.name.toLowerCase().endsWith('.jpg') ||
+     f.name.toLowerCase().endsWith('.jpeg')
+   );
+   if(validFiles.length === 0){
+     funcarteStatus.textContent = 'Aucun fichier PNG/JPG valide trouvé';
+     setTimeout(()=>{ funcarteStatus.style.display = 'none'; }, 3000);
+     return;
+   }
+   const cards = [];
+   let imported = 0;
+   await Promise.all(validFiles.map(file => new Promise(resolve => {
+     const reader = new FileReader();
+     reader.onload = async (ev) => {
+     const imageUrl = ev.target.result;
+     let name = file.name.replace(/\.(png|jpe?g)$/i, '').trim();
+     // Détection des jetons
+     let isTokenTemplate = false;
+     if(/\\(jeton\\)$/i.test(name)){
+         isTokenTemplate = true;
+         name = name.replace(/\\(jeton\\)$/i, "").trim();
+     }
+     try {
+       const compressedUrl = await compressImageDataUrl(file, { maxWidth: 320, quality: 0.58 });
+       if(name && compressedUrl){
+           cards.push({
+               name,
+               imageUrl: compressedUrl,
+               isTokenTemplate
+           });
+           imported++;
+       }
+     } catch (e) {
+       console.warn('Compression failed for', file.name, e);
+       if(name && imageUrl){
+         cards.push({
+           name,
+           imageUrl,
+           isTokenTemplate
+         });
+         imported++;
+       }
+     }
+     resolve();
+ };
+     reader.onerror = () => resolve();
+     reader.readAsDataURL(file);
+   })));
+   if(imported > 0){
+     await funcarteDB.addMany(cards);
+     currentFuncartes = await funcarteDB.getAll();
+     funcarteStatus.textContent = `✓ ${imported} funcartes importées`;
+     funcarteFile.value = '';
+     setTimeout(()=>{ funcarteStatus.style.display = 'none'; }, 2000);
+   } else {
+     funcarteStatus.textContent = 'Aucune carte valide importée';
+     setTimeout(()=>{ funcarteStatus.style.display = 'none'; }, 3000);
+   }
+ });
+ viewFuncarteBtn.addEventListener('click', async ()=>{
+   const db = await funcarteDB.getAll();
+   const entries = Object.values(db).filter(Boolean);
+   const count = entries.length;
+   if(count === 0){
+     alert('Base de données vide');
+     return;
+   }
+   const overlay = document.createElement('div');
+   overlay.className = 'funcarte-view';
+   overlay.addEventListener('click', (e)=>{ if(e.target === overlay) overlay.remove(); });
+   const panel = document.createElement('div');
+   panel.className = 'funcarte-panel';
+   const header = document.createElement('div');
+   header.className = 'funcarte-header';
+   const title = document.createElement('div');
+   title.textContent = `Funcartes (${count})`;
+   const closeBtn = document.createElement('button');
+   closeBtn.className = 'ghost small';
+   closeBtn.textContent = 'Fermer';
+   closeBtn.addEventListener('click', ()=> overlay.remove());
+   header.appendChild(title);
+   header.appendChild(closeBtn);
+   const grid = document.createElement('div');
+   grid.className = 'funcarte-grid';
+   entries.forEach(card => {
+     const item = document.createElement('div');
+     item.className = 'funcarte-item';
+     const img = document.createElement('img');
+     img.src = card.imageUrl || (Array.isArray(card.faces) ? card.faces[0] : '');
+     img.alt = card.name || 'funcarte';
+     img.onerror = ()=>{ img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='; };
+     const name = document.createElement('div');
+     name.className = 'funcarte-name';
+     name.textContent = card.name || '(sans nom)';
+     item.appendChild(img);
+     item.appendChild(name);
+     grid.appendChild(item);
+   });
+   panel.appendChild(header);
+   panel.appendChild(grid);
+   overlay.appendChild(panel);
+   document.body.appendChild(overlay);
+ });
+ clearFuncarteBtn.addEventListener('click', async ()=>{
+   if(confirm('Êtes-vous sûr de vouloir effacer la base de données de funcartes?')){
+     await funcarteDB.clear();
+     currentFuncartes = {};
+     alert('Base de données effacée');
+   }
+ });
+ function newGame(){
+   // restore the commander chosen at deck load (if any)
+   const savedCommanderId = state.chosenCommanderId || (state.chosenCommander && state.chosenCommander.id) || null;
+   const savedCommanderRef = state.chosenCommander || null;
+   // remove commander from any zone so we can re-place it into command zone
+   if(savedCommanderId){ removeCardById(savedCommanderId); }
+   // Réinitialisation des cartes
+   state.library = [];
+   state.hand = [];
+   state.battlefield = [];
+   state.graveyard = [];
+   state.exile = [];
+   state.commandZone = [];
+   state.tokens = [];
+   // Réinitialise toutes les cartes du deck et reconstruit la bibliothèque
+   let commanderFromDeck = null;
+   for(const card of state.deck){
+     card.counters = {};
+     card.tapped = false;
+     card.face = 0;
+     if(card.raw){
+       card.name = card.raw.name || card.raw.card_faces?.[0]?.name || card.name;
+       card.image = chooseImageFromData(card.raw);
+     }
+     card.x = 20 + Math.random()*200;
+     card.y = 20 + Math.random()*200;
+     // skip the saved commander when rebuilding the library
+     if(savedCommanderId && card.id === savedCommanderId){
+       commanderFromDeck = card;
+       continue;
+     }
+     state.library.push(card);
+   }
+   // place commander into command zone: prefer the object from the deck if present
+   if(commanderFromDeck){
+     state.commandZone.push(commanderFromDeck);
+     state.chosenCommander = commanderFromDeck;
+     state.chosenCommanderId = commanderFromDeck.id;
+     commandWrap.style.display = 'block';
+   } else if(savedCommanderRef){
+     // commander was fetched or created previously (not part of deck)
+     state.commandZone.push(savedCommanderRef);
+     state.chosenCommander = savedCommanderRef;
+     state.chosenCommanderId = savedCommanderRef.id;
+     commandWrap.style.display = 'block';
+   } else {
+     state.commandZone = [];
+     state.chosenCommander = null; state.chosenCommanderId = null;
+     commandWrap.style.display = 'none';
+   }
+   // Mélange
+   state.library = shuffleArray(state.library);
+   // Compteurs
+   lifeNode.textContent = 40;
+   poisonNode.textContent = 0;
+   $('degat_du_co').textContent = 0;
+   updateGameOverDisplay();
+   undoStack = [];
+   $('undoBtn').disabled = true;
+   if(state.library.length === 0) return alert('Bibliotheque vide');
+   drawX(7);
+   renderAll();
+ }
+ /* ===========================
+    UI handlers (draw/mill/tutor etc)
+    =========================== */
+ $('newTurn').addEventListener('click', ()=>{
+   // Untap all cards on battlefield, hand, and tokens
+   const allCards = state.hand.concat(state.battlefield).concat(state.tokens);
+   for(const card of allCards){
+     card.tapped = false;
+   }
+   // Draw 1 card
+   drawX(1);
+   renderAll();
+ });
+ $('drawX').addEventListener('click', ()=>{ const n = parseInt(prompt('Combien piocher ?', '1')); if(!n || n<=0) return; drawX(n); });
+ $('millX').addEventListener('click', ()=>{ const n = parseInt(prompt('Combien meuler ?', '1')); if(!n || n<=0) return; millX(n); });
+ $('tutorBtn').addEventListener('click', ()=>{ const name = prompt('Nom de la carte'); if(!name) return; tutorByName(name); });
+ $('revealTop').addEventListener('click', ()=>{
+   if(state.library.length === 0) return alert('Bibliothèque vide');
+   const overlay = document.createElement('div');
+   overlay.className = 'reveal-overlay';
+   overlay.addEventListener('click', (e)=>{ if(e.target === overlay) overlay.remove(); });
+   const panel = document.createElement('div');
+   panel.className = 'reveal-panel';
+   const title = document.createElement('div');
+   title.className = 'muted';
+   title.textContent = 'Carte du dessus';
+   const name = document.createElement('div');
+   name.className = 'reveal-name';
+   const img = document.createElement('img');
+   img.className = 'reveal-image';
+   img.alt = 'Carte révélée';
+   img.onerror = ()=>{ img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='; };
+   const nav = document.createElement('div');
+   nav.className = 'reveal-nav';
+   const prevBtn = document.createElement('button');
+   prevBtn.textContent = '←';
+   prevBtn.className = 'ghost small';
+   const countLabel = document.createElement('span');
+   countLabel.className = 'muted';
+   const nextBtn = document.createElement('button');
+   nextBtn.textContent = '→';
+   nextBtn.className = 'ghost small';
+   const closeBtn = document.createElement('button');
+   closeBtn.className = 'ghost small';
+   closeBtn.textContent = 'Fermer';
+   let index = 0;
+   const render = () => {
+     const card = state.library[index];
+     if(!card){ overlay.remove(); return; }
+     name.textContent = card.name || '(sans nom)';
+     img.src = card.image || '';
+     countLabel.textContent = `${index + 1}/${state.library.length}`;
+     prevBtn.disabled = index <= 0;
+     nextBtn.disabled = index >= state.library.length - 1;
+   };
+   prevBtn.addEventListener('click', ()=>{ if(index > 0){ index--; render(); } });
+   nextBtn.addEventListener('click', ()=>{ if(index < state.library.length - 1){ index++; render(); } });
+   closeBtn.addEventListener('click', ()=> overlay.remove());
+   const onKey = (e)=>{
+     if(e.key === 'ArrowLeft'){ prevBtn.click(); }
+     else if(e.key === 'ArrowRight'){ nextBtn.click(); }
+     else if(e.key === 'Escape'){ overlay.remove(); document.removeEventListener('keydown', onKey); }
+   };
+   document.addEventListener('keydown', onKey);
+   nav.appendChild(prevBtn);
+   nav.appendChild(countLabel);
+   nav.appendChild(nextBtn);
+   panel.appendChild(title);
+   panel.appendChild(name);
+   panel.appendChild(img);
+   panel.appendChild(nav);
+   panel.appendChild(closeBtn);
+   overlay.appendChild(panel);
+   document.body.appendChild(overlay);
+   render();
+ });
+ $('shuffleLib').addEventListener('click', ()=>{ state.library = shuffleArray(state.library); renderAll(); });
+ $('lifePlus').addEventListener('click', ()=>{
+     lifeNode.textContent = parseInt(lifeNode.textContent) + 1;
+     updateGameOverDisplay();
+ });
+ $('lifeMinus').addEventListener('click', ()=>{
+     lifeNode.textContent = parseInt(lifeNode.textContent) - 1;
+     updateGameOverDisplay();
+ });
+ $('degat_du_coPlus').addEventListener('click', ()=>{
+     $('degat_du_co').textContent =
+         parseInt($('degat_du_co').textContent) + 1;
+         lifeNode.textContent = parseInt(lifeNode.textContent) - 1;
+     updateGameOverDisplay();
+ });
+ $('degat_du_coMinus').addEventListener('click', ()=>{
+     $('degat_du_co').textContent =
+         parseInt($('degat_du_co').textContent) - 1;
+         lifeNode.textContent = parseInt(lifeNode.textContent) + 1;
+     updateGameOverDisplay();
+ });
+ $('poisonPlus').addEventListener('click', ()=>{
+     poisonNode.textContent = parseInt(poisonNode.textContent) + 1;
+     updateGameOverDisplay();
+ });
+ $('poisonMinus').addEventListener('click', ()=>{
+     poisonNode.textContent = parseInt(poisonNode.textContent) - 1;
+     updateGameOverDisplay();
+ });
+ $('toggleHand').addEventListener('click', ()=>{
+   handHidden = !handHidden;
+   $('toggleHand').textContent = handHidden ? 'Révéler main' : 'Cacher main';
+   renderAll();
+ });
+ $('newGame').addEventListener('click', ()=>{
+   if(confirm('Voulez-vous vraiment commencer une nouvelle partie ?')) {
+     newGame();
+   }
+ });
+ /* ===========================
+    Tokens: create from template
+    =========================== */
+ function createTokenFromTemplate(t){
+   const tk = {
+     id: uid('token'),
+     name: t.name,
+     image: t.image,
+     counters: {},
+     tapped: false,
+     isToken: true,
+     x: 24 + Math.random() * 140,
+     y: 24 + Math.random() * 140
+   };
+   return tk;
+ }
+ /* ===========================
+    helpers
+    =========================== */
+ function shuffleArray(a){ const arr = a.slice(); for(let i=arr.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
+ /* ===========================
+    Shortcuts for moving via menu: used by menu buttons
+    =========================== */
+ // They call moveCardById(cardId, currentZone, destZone)
+ /* ===========================
+    Long-press helper for mobile
+    =========================== */
+ function addLongPress(node, callback, ms=600){
+   let timer=null, moved=false;
+   node.addEventListener('pointerdown', (e)=>{
+     moved=false;
+     timer = setTimeout(()=>{ callback(e); }, ms);
+   });
+   node.addEventListener('pointermove', ()=>{ moved=true; if(timer){ clearTimeout(timer); timer=null; } });
+   node.addEventListener('pointerup', ()=>{ if(timer){ clearTimeout(timer); timer=null; } });
+   node.addEventListener('pointercancel', ()=>{ if(timer){ clearTimeout(timer); timer=null; } });
+ }
+ /* ===========================
+    helpers used by dynamic menu & actions
+    =========================== */
+ function closeMenuIfOpen(){ if(currentMenu){ currentMenu.remove(); currentMenu = null; } }
+ /* ===========================
+    find remove helpers (used earlier)
+    =========================== */
+ function removeCardFromZoneArray(arr, id){
+   const idx = arr.findIndex(c=>c.id===id); if(idx>-1){ const sp = arr.splice(idx,1)[0]; return sp; } return null;
+ }
+ /* ===========================
+    remove generic
+    =========================== */
+ function removeCardById(id){
+   for(const z of ['library','hand','battlefield','graveyard','exile','commandZone','tokens','deck']){
+     const a = state[z];
+     if(!a) continue;
+     const idx = a.findIndex(c=>c.id === id);
+     if(idx>-1){ return a.splice(idx,1)[0]; }
+   }
+   return null;
+ }
+ /* ===========================
+    initial render
+    =========================== */
+ renderAll();
+ /* ===========================
+    Export state
+    =========================== */
+ $('exportBtn').addEventListener('click', ()=>{
+   const exportObj = buildExportPayload();
+   const blob = new Blob([JSON.stringify(exportObj,null,2)], {type:'application/json'});
+   const url = URL.createObjectURL(blob);
+   const a = document.createElement('a'); a.href = url; a.download = 'mtg-state.json'; a.click(); URL.revokeObjectURL(url);
+ });
+ importStateBtn.addEventListener('click', ()=> importStateFile.click());
+ importStateFile.addEventListener('change', (e)=>{
+   const file = e.target.files && e.target.files[0];
+   if(!file) return;
+   const reader = new FileReader();
+   reader.onload = (ev)=>{
+     try{
+       const parsed = JSON.parse(ev.target.result);
+       restoreImportedState(parsed);
+       alert('État importé avec succès');
+     }catch(err){
+       console.error(err);
+       alert('Fichier JSON invalide');
+     } finally {
+       importStateFile.value = '';
+     }
+   };
+   reader.onerror = ()=>{
+     alert('Impossible de lire le fichier');
+     importStateFile.value = '';
+   };
+   reader.readAsText(file);
+ });
+ /* ===========================
+    Safe click outside to close menu
+    =========================== */
+ document.addEventListener('click', (e)=>{ if(currentMenu && !e.target.closest('.context-menu')){ currentMenu.remove(); currentMenu=null; } });
+ /* ===========================
+    Expose small API for console
+    =========================== */
+ window._mtg = {
+   state,
+   renderAll,
+   moveCardById,
+   findCardById,
+   removeCardById
+ };
+ </script>
+ </body>
+ </html>
+
