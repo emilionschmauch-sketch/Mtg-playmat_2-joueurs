@@ -365,16 +365,16 @@ textarea#deckText{width:100%;min-height:90px;padding:8px;border-radius:8px;borde
 
 .remote-battlefield{
   position:relative;
-  min-height:180px;
-  overflow:auto;
+  height:clamp(460px, 62vh, 760px);
+  overflow:hidden;
   background:rgba(0,0,0,0.12);
   border-radius:8px;
 }
 
 .remote-battlefield .card{
   position:absolute;
-  width:var(--small-w);
-  height:var(--small-h);
+  width:112px;
+  height:156px;
 }
 
 .remote-card-image{
@@ -442,10 +442,10 @@ body.game-over{
 
     <div id="remoteConnectionPanel" class="remote-connection-panel" style="display:none">
       <label>Adresse du serveur WebSocket
-        <input id="remoteServerUrl" type="url" autocomplete="url" placeholder="ws://adresse-du-serveur:8080/ws">
+        <input id="remoteServerUrl" type="url" autocomplete="url" value="wss://mtg-playmat2-joueurs-production.up.railway.app/ws">
       </label>
       <label>Code de salle
-        <input id="remoteRoomCode" type="text" maxlength="32" autocomplete="off" placeholder="Ex. ABC123">
+        <input id="remoteRoomCode" type="text" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off" placeholder="Ex. 4821">
       </label>
       <label>Votre nom
         <input id="remotePlayerName" type="text" maxlength="32" autocomplete="nickname" placeholder="Joueur">
@@ -454,7 +454,7 @@ body.game-over{
       <button id="connectRemoteBtn" class="btn small" type="button">Rejoindre la salle</button>
       <button id="disconnectRemoteBtn" class="ghost small" type="button" style="display:none">Se déconnecter</button>
       <div id="remoteStatus" class="remote-status muted" role="status" aria-live="polite"></div>
-      <div class="remote-status muted">Sur un ordinateur, lancez <code>npm install</code> puis <code>npm start</code>. Sur les deux postes, entrez <code>ws://ADRESSE_IP_DU_SERVEUR:8080/ws</code> et le même code. Pour jouer hors réseau local, hébergez le relais avec une adresse sécurisée <code>wss://</code>. Seules les zones publiques sont partagées ; main, bibliothèque et deck restent privés.</div>
+      <div class="remote-status muted">Les deux joueurs utilisent cette adresse et le même code de salle à 4 chiffres. Seules les zones publiques sont partagées ; main, bibliothèque et deck restent privés.</div>
     </div>
 
     <div style="padding-top:12px;display:none" id="funcarteSection">
@@ -1119,6 +1119,7 @@ body.game-over{
    title.textContent = `${remotePlayer.name || 'Adversaire'} — zones publiques`;
    header.appendChild(title);
    player.appendChild(header);
+   wrap.appendChild(player);
    const stats = document.createElement('div');
    stats.className = 'remote-player-stats';
    [
@@ -1144,6 +1145,17 @@ body.game-over{
      player.appendChild(heading);
      const zone = document.createElement('div');
      zone.className = battlefield ? 'remote-battlefield' : 'remote-player-zone';
+     player.appendChild(zone);
+     const battlefieldCards = battlefield ? cards : [];
+     const maximumX = battlefieldCards.reduce((max, card) => Math.max(max, Math.max(0, Number(card.x) || 0)), 0);
+     const maximumY = battlefieldCards.reduce((max, card) => Math.max(max, Math.max(0, Number(card.y) || 0)), 0);
+     const scale = battlefield
+       ? Math.min(
+         1.5,
+         maximumX ? (zone.clientWidth - 178) / maximumX : 1.5,
+         maximumY ? (zone.clientHeight - 156) / maximumY : 1.5
+       )
+       : 1;
      cards.forEach(card => {
        const el = document.createElement('div');
        el.className = 'card' + (card.tapped ? ' tapped' : '');
@@ -1157,8 +1169,9 @@ body.game-over{
        image.className = 'remote-card-image';
        el.appendChild(image);
        if(battlefield){
-         el.style.left = `${Math.max(0, Math.min(10000, Number(card.x) || 0))}px`;
-         el.style.top = `${Math.max(0, Math.min(10000, Number(card.y) || 0))}px`;
+         const left = Math.max(0, Number(card.x) || 0) * scale;
+         el.style.left = `${card.tapped ? Math.max(22, left) : left}px`;
+         el.style.top = `${Math.max(0, Number(card.y) || 0) * scale}px`;
        }
        for(const [key, value] of Object.entries(card.counters || {})){
          const counter = document.createElement('div');
@@ -1168,13 +1181,11 @@ body.game-over{
        }
        zone.appendChild(el);
      });
-     player.appendChild(zone);
    };
    appendZone('Champ de bataille', Array.isArray(data.battlefield) ? data.battlefield : [], true);
    appendZone('Cimetière', Array.isArray(data.graveyard) ? data.graveyard : [], false);
    appendZone('Exil', Array.isArray(data.exile) ? data.exile : [], false);
    if(Array.isArray(data.commandZone) && data.commandZone.length) appendZone('Zone de commandement', data.commandZone, false);
-   wrap.appendChild(player);
  }
  function disconnectRemote(message){
    if(remoteSocket){
@@ -1202,8 +1213,8 @@ body.game-over{
      $('remoteStatus').textContent = 'L’adresse doit commencer par ws:// ou wss://.';
      return;
    }
-   if(!/^[a-zA-Z0-9_-]{1,32}$/.test(room)){
-     $('remoteStatus').textContent = 'Le code doit contenir 1 à 32 lettres, chiffres, tirets ou underscores.';
+   if(!/^\d{4}$/.test(room)){
+     $('remoteStatus').textContent = 'Le code de salle doit contenir exactement 4 chiffres.';
      return;
    }
    $('remoteStatus').textContent = 'Connexion au serveur…';
@@ -1269,19 +1280,20 @@ body.game-over{
  $('addRemotePlayerBtn').addEventListener('click', () => {
    const panel = $('remoteConnectionPanel');
    panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
-   if(!$('remoteServerUrl').value){
-     const host = location.hostname || 'localhost';
-     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-     const port = location.protocol === 'https:' ? '' : ':8080';
-     $('remoteServerUrl').value = `${protocol}//${host}${port}/ws`;
-   }
+   if(!$('remoteServerUrl').value) $('remoteServerUrl').value = 'wss://mtg-playmat2-joueurs-production.up.railway.app/ws';
    if(!$('remotePlayerName').value) $('remotePlayerName').value = `Joueur ${Math.floor(Math.random() * 90) + 10}`;
  });
  $('generateRoomBtn').addEventListener('click', () => {
-    const bytes = new Uint8Array(12);
-   crypto.getRandomValues(bytes);
-   $('remoteRoomCode').value = Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('').toUpperCase();
+   const bytes = new Uint16Array(1);
+   do { crypto.getRandomValues(bytes); } while(bytes[0] >= 60000);
+   $('remoteRoomCode').value = String(bytes[0] % 10000).padStart(4, '0');
    connectRemote();
+ });
+ $('remoteRoomCode').addEventListener('input', event => {
+   event.target.value = event.target.value.replace(/\D/g, '').slice(0, 4);
+ });
+ window.addEventListener('resize', () => {
+   if(remotePlayer && remotePlayer.state) renderRemotePlayer();
  });
  $('connectRemoteBtn').addEventListener('click', connectRemote);
  $('disconnectRemoteBtn').addEventListener('click', () => disconnectRemote('Vous avez quitté la salle.'));
