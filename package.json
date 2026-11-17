@@ -1,0 +1,12 @@
+{
+  "name": "mtg-playmat-websocket-relay",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Relais WebSocket pour jouer au simulateur MTG Playmat à deux",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
